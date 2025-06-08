@@ -21,10 +21,11 @@ api.interceptors.response.use(
       try {
         // Call your EXISTING backend endpoint
         const res = await axios.post(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/refreshAccessToken`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/refreshAccessToken`,
           {refreshToken : localStorage.getItem('adminRefreshToken')} 
         );
-
+        console.log(localStorage.getItem("adminRefreshToken"))
+        removeTokens();
         const data = res.data.data;
         setTokens(data.accessToken,data.refreshToken);
         error.config.headers.Authorization = `Bearer ${data.accessToken}`;

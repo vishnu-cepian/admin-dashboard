@@ -1,9 +1,8 @@
 // Token management
 export const setTokens = (adminAccessToken, adminRefreshToken) => {
-  if (typeof window !== 'undefined') {
     localStorage.setItem('adminAccessToken', adminAccessToken);
     localStorage.setItem('adminRefreshToken', adminRefreshToken);
-  }
+  console.log(localStorage.getItem("adminRefreshToken"))
 };
 
 export const getAccessToken = () => {
