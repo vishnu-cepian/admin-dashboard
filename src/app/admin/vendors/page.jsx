@@ -7,7 +7,8 @@ import { Table, Badge, Button, Skeleton, message, Select, Space } from 'antd';
 export default function VendorListPage() {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState(null); // New state for filter
+  const [filterStatus, setFilterStatus] = useState(''); // New state for filter
+  const [serviceFilterStatus, setServiceFilterStatus] = useState('');
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -20,6 +21,7 @@ export default function VendorListPage() {
       const response = await api.get('/api/admin/getAllVendors', {
         params: {
           status: filterStatus, // Send filter to backend
+          service: serviceFilterStatus,
           page: params.pagination?.current || pagination.current,
           pageSize: params.pagination?.pageSize || pagination.pageSize,
           ...params,
@@ -50,7 +52,7 @@ export default function VendorListPage() {
 
   useEffect(() => {
     fetchVendors();
-  }, [filterStatus]); // Refetch when filter changes
+  }, [filterStatus,serviceFilterStatus]); // Refetch when filter changes
 
   const handleTableChange = (newPagination) => {
     fetchVendors({
@@ -120,13 +122,24 @@ export default function VendorListPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Manage Vendors</h1>
         <Space>
+        <Select
+            placeholder="Filter by SERVICE"
+            style={{ width: 150 }}
+            onChange={setServiceFilterStatus}
+            allowClear
+            options={[
+              { value: '', label: 'All Services' },
+              { value: 'TAILORING', label: 'Tailoring' },
+              { value: 'LAUNDRY', label: 'Laundry' },
+            ]}
+          />
           <Select
             placeholder="Filter by status"
             style={{ width: 150 }}
             onChange={setFilterStatus}
             allowClear
             options={[
-              { value: null, label: 'All Statuses' },
+              { value: '', label: 'All Statuses' },
               { value: 'PENDING', label: 'Pending' },
               { value: 'VERIFIED', label: 'Verified' },
               { value: 'REJECTED', label: 'Rejected' },

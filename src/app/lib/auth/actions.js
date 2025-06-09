@@ -2,7 +2,6 @@
 export const setTokens = (adminAccessToken, adminRefreshToken) => {
     localStorage.setItem('adminAccessToken', adminAccessToken);
     localStorage.setItem('adminRefreshToken', adminRefreshToken);
-  console.log(localStorage.getItem("adminRefreshToken"))
 };
 
 export const getAccessToken = () => {
