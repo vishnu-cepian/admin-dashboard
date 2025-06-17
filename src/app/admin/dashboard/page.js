@@ -58,6 +58,10 @@ export default function DashboardPage() {
     router.push("/admin/vendors")
   }
 
+ const manageNotifications =()=> {
+    router.push("/admin/notifications")
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black-100 flex items-center justify-center">
@@ -127,6 +131,9 @@ export default function DashboardPage() {
             </div>
             <div className="p-4 border text-black rounded-xl text-center bg-green-50 hover:bg-green-100 cursor-pointer" onClick={manageVendors}>
               Manage Vendors
+            </div>
+            <div className="p-4 border text-black rounded-xl text-center bg-green-50 hover:bg-green-100 cursor-pointer" onClick={manageNotifications}>
+              Notifications
             </div>
             <div className="p-4 border text-black rounded-xl text-center bg-yellow-50 hover:bg-yellow-100 cursor-pointer">
               Orders
