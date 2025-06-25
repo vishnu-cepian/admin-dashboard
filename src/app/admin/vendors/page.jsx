@@ -129,8 +129,8 @@ export default function VendorListPage() {
             allowClear
             options={[
               { value: '', label: 'All Services' },
-              { value: 'TAILORING', label: 'Tailoring' },
-              { value: 'LAUNDRY', label: 'Laundry' },
+              { value: 'tailoring', label: 'Tailoring' },
+              { value: 'laundry', label: 'Laundry' },
             ]}
           />
           <Select

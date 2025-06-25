@@ -91,10 +91,10 @@ export default function VendorDetailsPage({ params }) {
           <Descriptions.Item label="Shop Name">{vendor?.shopName}</Descriptions.Item>
           <Descriptions.Item label="Shop Type">{vendor?.shopType}</Descriptions.Item>
           <Descriptions.Item label="Service Type">{vendor?.serviceType}</Descriptions.Item>
-          <Descriptions.Item label="Target Gender">{vendor?.targetGender}</Descriptions.Item>
+          <Descriptions.Item label="Vendor Services">{vendor?.vendorServices}</Descriptions.Item>
           <Descriptions.Item label="Ownership Type">{vendor?.ownershipType}</Descriptions.Item>
-          <Descriptions.Item label="Rating">{vendor?.rating} ({vendor?.ratingCount} reviews)</Descriptions.Item>
-          <Descriptions.Item label="Popularity Score">{vendor?.popularityScore}</Descriptions.Item>
+          <Descriptions.Item label="Rating">{vendor?.allTimeRating} ({vendor?.allTimeReviewCount} reviews)</Descriptions.Item>
+          <Descriptions.Item label="Current Month Rating">{vendor?.currentMonthRating} ({vendor?.currentMonthReviewCount} reviews)</Descriptions.Item>
           <Descriptions.Item label="Description" span={2}>
             {vendor?.shopDescription}
           </Descriptions.Item>
