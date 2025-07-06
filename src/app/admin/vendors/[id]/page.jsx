@@ -26,7 +26,7 @@ export default function VendorDetailsPage({ params }) {
   }
 
   const rejectVendor = async() => {
-    await api.post(`/api/admin/rejectVendor/${resolvedParams.id}`)
+    await api.delete(`/api/admin/rejectVendor/${resolvedParams.id}`)
     setAction(!action);
   }
 
@@ -233,6 +233,38 @@ export default function VendorDetailsPage({ params }) {
 
       <Divider />
 
+
+<div className="mt-4 mb-6 space-y-4">
+  {vendor.status === 'PENDING' && (
+    <Card size="big" type="inner" title="⚠️ Verification Warning">
+      <p className="text-red-600 text-lg">
+        Rejecting vendor will <strong>delete all the vendor data from the database</strong> and will enable an option 
+        for them to re-apply for verification. <strong>Note:</strong> This will not delete the actual 
+        user from users table - they can still login but won't have vendor authorization.
+      </p>
+    </Card>
+  )}
+
+  <Card size="big" type="inner" title="🚨 Blocking Warning">
+    <p className="text-red-600 text-lg">
+      🚨🚨 <strong>Blocking</strong> a vendor with ongoing orders or commitments may cause <strong>system instability</strong>. 
+      Only proceed after ensuring the vendor has no active engagements.
+    </p>
+  </Card>
+
+  {vendor.status === 'VERIFIED' && (
+    <Card size="big" type="inner" title="🔒 Verification Notice">
+      <p className="text-green-600 text-lg">
+        This vendor is already verified. Only use rejection in exceptional circumstances 
+        as it may <strong>disrupt</strong> existing customer relationships.
+      </p>
+      <p className="text-red-600 text-lg">
+          ⚠️ <strong>REJECT will DELETE vendor</strong>. which is not advised as it may <strong>break</strong> the production
+      </p>
+    </Card>
+  )}
+</div>
+
       <div className="mt-6 flex gap-4">
         <Button 
           danger 
@@ -253,7 +285,7 @@ export default function VendorDetailsPage({ params }) {
               danger 
               onClick={() => rejectVendor(resolvedParams.id)}
             >
-              Reject Vendor
+              Reject (hard DELETE) Vendor
             </Button>
           </Space>
         )}
@@ -274,7 +306,13 @@ export default function VendorDetailsPage({ params }) {
               danger
               onClick= {() => rejectVendor(resolvedParams.id)}
             >
-              Reject Vendor
+              Reject (hard DELETE) Vendor
+            </Button>
+            <Button 
+              type="primary" 
+              // onClick= {() => rejectVendor(resolvedParams.id)}
+            >
+              View All Orders
             </Button>
           </Space>
         )}
