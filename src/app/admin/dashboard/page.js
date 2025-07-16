@@ -61,6 +61,14 @@ export default function DashboardPage() {
  const manageNotifications =()=> {
     router.push("/admin/notifications")
   }
+ 
+  const manageOrders = () => {
+    router.push("/admin/orders")
+  }
+
+  const manageCustomers = () => {
+    router.push("/admin/customers")
+  }
 
   if (loading) {
     return (
@@ -126,8 +134,8 @@ export default function DashboardPage() {
           <p className="text-gray-700 mb-4">Welcome, <strong>{adminEmail}</strong> 👋</p>
 
           <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="p-4 border text-black rounded-xl text-center bg-blue-70 hover:bg-blue-100 cursor-pointer">
-              Manage Users
+            <div className="p-4 border text-black rounded-xl text-center bg-blue-70 hover:bg-blue-100 cursor-pointer" onClick = {manageCustomers}>
+              Manage Customers
             </div>
             <div className="p-4 border text-black rounded-xl text-center bg-green-50 hover:bg-green-100 cursor-pointer" onClick={manageVendors}>
               Manage Vendors
@@ -135,7 +143,7 @@ export default function DashboardPage() {
             <div className="p-4 border text-black rounded-xl text-center bg-green-50 hover:bg-green-100 cursor-pointer" onClick={manageNotifications}>
               Notifications
             </div>
-            <div className="p-4 border text-black rounded-xl text-center bg-yellow-50 hover:bg-yellow-100 cursor-pointer">
+            <div className="p-4 border text-black rounded-xl text-center bg-yellow-50 hover:bg-yellow-100 cursor-pointer" onClick={manageOrders}>
               Orders
             </div>
             <div className="p-4 border text-black rounded-xl text-center bg-purple-50 hover:bg-purple-100 cursor-pointer">
