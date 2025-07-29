@@ -30,9 +30,18 @@ const OrderDetailPage = () => {
 
         const quotesPromise = vendorsRes.data.data.map(vendor => 
           api.get(`/api/admin/getQuotes/${vendor.id}`)
+          .catch(error => {
+            console.error(`Failed to fetch quotes for vendor ${vendor.id}:`, error);
+            return null;
+          })
         )
-        const quotesResponse = await Promise.all(quotesPromise);
-        setAllQuotes(quotesResponse.map(res => res.data.data));
+        const quotesResponse = await Promise.allSettled(quotesPromise);
+      
+        const successfulQuotes = quotesResponse
+        .filter(result => result.status === 'fulfilled' && result.value)
+        .map(result => result.value.data.data);
+
+        setAllQuotes(successfulQuotes);
 
       } catch (error) {
         console.error('Failed to fetch data:', error);
