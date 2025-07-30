@@ -224,10 +224,10 @@ const OrderDetailPage = () => {
       render: (price) => `₹${price}`
     },
     {
-      title: 'Platform Fee',
+      title: 'Price After Platform Fee',
       dataIndex: 'priceAfterPlatformFee',
       key: 'platformFee',
-      render: (_, record) => `₹${record.quotedPrice - record.vendorPayoutAfterCommission}`
+      render: (price) => `₹${price}`
     },
     {
       title: 'Delivery Charge',
