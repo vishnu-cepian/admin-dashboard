@@ -3,7 +3,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from "@/app/lib/api/axios";
-import { Button, Card, Descriptions, message, Skeleton, Tag, Space, Image, Tabs, Divider } from 'antd';
+import { Button, Card, Descriptions, message, Skeleton, Tag, Space, Image, Tabs, Divider, Modal } from 'antd';
 import { EnvironmentOutlined, BankOutlined, IdcardOutlined, ShopOutlined } from '@ant-design/icons';
 import {fileView} from '@/app/lib/s3/fileView';
 
@@ -11,35 +11,84 @@ export default function VendorDetailsPage({ params }) {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const router = useRouter();
 
   const resolvedParams = React.use(params);
 
-  const blockOrUnblockVendor = async() => {
-    await api.post(`/api/admin/blockOrUnblockVendor/${resolvedParams.id}`)
-    setAction(!action);
-  }
-  
-  const verifyVendor = async() => {
-    await api.post(`/api/admin/verifyVendor/${resolvedParams.id}`)
-    setAction(!action);
-  }
+  // Block/Unblock Vendor
+  const showBlockModal = () => setIsBlockModalOpen(true);
+  const handleBlockCancel = () => setIsBlockModalOpen(false);
+  const blockOrUnblockVendor = async () => {
+    setProcessing(true);
+    try {
+      await api.post(`/api/admin/blockOrUnblockVendor/${resolvedParams.id}`);
+      message.success(`Vendor ${vendor.user?.isBlocked ? 'unblocked' : 'blocked'} successfully`);
+      setAction(!action);
+    } catch (error) {
+      alert(error.response?.data?.message || `Failed to ${vendor.user?.isBlocked ? 'unblock' : 'block'} vendor`);
+      console.error('Failed to update block status:', error);
+      message.error(`Failed to ${vendor.user?.isBlocked ? 'unblock' : 'block'} vendor`);
+    } finally {
+      setProcessing(false);
+      setIsBlockModalOpen(false);
+    }
+  };
 
-  const rejectVendor = async() => {
-    await api.delete(`/api/admin/rejectVendor/${resolvedParams.id}`)
-    setAction(!action);
-  }
+  // Verify Vendor
+  const showVerifyModal = () => setIsVerifyModalOpen(true);
+  const handleVerifyCancel = () => setIsVerifyModalOpen(false);
+  const verifyVendor = async () => {
+    setProcessing(true);
+    try {
+      await api.post(`/api/admin/verifyVendor/${resolvedParams.id}`);
+      message.success('Vendor verified successfully');
+      setAction(!action);
+    } catch (error) {
+      alert("Failed to verify vendor");
+      console.error('Failed to verify vendor:', error);
+      message.error('Failed to verify vendor');
+    } finally {
+      setProcessing(false);
+      setIsVerifyModalOpen(false);
+    }
+  };
+
+  // Reject Vendor
+  const showRejectModal = () => setIsRejectModalOpen(true);
+  const handleRejectCancel = () => setIsRejectModalOpen(false);
+  const rejectVendor = async () => {
+    setProcessing(true);
+    try {
+      await api.delete(`/api/admin/rejectVendor/${resolvedParams.id}`);
+      message.success('Vendor rejected successfully');
+      router.push('/admin/vendors');
+    } catch (error) {
+      // Modal.error({
+      //   title: 'Reject Failed',
+      //   content: 'This will permanently delete the vendor\'s data! Are you sure you want to proceed?',
+      // });
+      alert(error.response?.data?.message || 'Failed to reject vendor');
+      console.error('Failed to reject vendor:', error);
+      message.error('Failed to reject vendor');
+    } finally {
+      setProcessing(false);
+      setIsRejectModalOpen(false);
+    }
+  };
 
   const handleViewDocument = async(fileName) => {
     const presignedUrl = await fileView(fileName);
-    console.log(presignedUrl)
     const link = document.createElement("a");
-      link.href = presignedUrl;
-      link.target = "_blank"; // Open in a new tab
-      link.rel = "noopener noreferrer"; // Security best practice
-      document.body.appendChild(link);
-      link.click(); // Programmatically click the link
-      document.body.removeChild(link); // Clean up
+    link.href = presignedUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   useEffect(() => {
@@ -56,7 +105,7 @@ export default function VendorDetailsPage({ params }) {
     };
     
     fetchVendor();
-  }, [resolvedParams.id,action]);
+  }, [resolvedParams.id, action]);
 
   const getUserStatusTag = () => {
     if (vendor?.user?.isBlocked) {
@@ -268,22 +317,25 @@ export default function VendorDetailsPage({ params }) {
       <div className="mt-6 flex gap-4">
         <Button 
           danger 
-          onClick={() => blockOrUnblockVendor(resolvedParams.id)}
+          onClick={showBlockModal}
+          loading={processing}
         >
-          {vendor.user?.isBlocked ? 'Unblock Vendor' : 'Block Vendor'}
+          {vendor?.user?.isBlocked ? 'Unblock Vendor' : 'Block Vendor'}
         </Button>
         
-        {vendor.status === 'PENDING'  && (
+        {vendor?.status === 'PENDING' && (
           <Space>
             <Button 
               type="primary" 
-              onClick= {() => verifyVendor(resolvedParams.id)}
+              onClick={showVerifyModal}
+              loading={processing}
             >
               Verify Vendor
             </Button>
             <Button 
               danger 
-              onClick={() => rejectVendor(resolvedParams.id)}
+              onClick={showRejectModal}
+              loading={processing}
             >
               Reject (hard DELETE) Vendor
             </Button>
@@ -304,19 +356,78 @@ export default function VendorDetailsPage({ params }) {
             <Button 
               type="primary" 
               danger
-              onClick= {() => rejectVendor(resolvedParams.id)}
+              onClick= {showRejectModal}
             >
               Reject (hard DELETE) Vendor
             </Button>
             <Button 
               type="primary" 
-              // onClick= {() => rejectVendor(resolvedParams.id)}
+              onClick={() => router.push(`/admin/vendors/orders/${params.id}/`)}
             >
               View All Orders
             </Button>
           </Space>
         )}
       </div>
+      <Modal
+        title={`Confirm ${vendor?.user?.isBlocked ? 'Unblock' : 'Block'} Vendor`}
+        open={isBlockModalOpen}
+        onOk={blockOrUnblockVendor}
+        onCancel={handleBlockCancel}
+        okText={vendor?.user?.isBlocked ? 'Yes, Unblock' : 'Yes, Block'}
+        cancelText="Cancel"
+        confirmLoading={processing}
+        okButtonProps={{ danger: !vendor?.user?.isBlocked }}
+      >
+        <p>
+          Are you sure you want to {vendor?.user?.isBlocked ? 'unblock' : 'block'} this vendor?
+          {!vendor?.user?.isBlocked && (
+            <span className="text-red-600 block mt-2">
+              This will prevent the vendor from accessing their account.
+            </span>
+          )}
+        </p>
+      </Modal>
+
+      {/* Verify Modal */}
+      <Modal
+        title="Confirm Verify Vendor"
+        open={isVerifyModalOpen}
+        onOk={verifyVendor}
+        onCancel={handleVerifyCancel}
+        okText="Yes, Verify"
+        cancelText="Cancel"
+        confirmLoading={processing}
+      >
+        <p>
+          Are you sure you want to verify this vendor?
+          <span className="text-green-600 block mt-2">
+            This will grant them full vendor privileges.
+          </span>
+        </p>
+      </Modal>
+
+      {/* Reject Modal */}
+      <Modal
+        title="⚠️ Confirm Reject Vendor"
+        open={isRejectModalOpen}
+        onOk={rejectVendor}
+        onCancel={handleRejectCancel}
+        okText="Yes, Reject"
+        cancelText="Cancel"
+        confirmLoading={processing}
+        okButtonProps={{ danger: true }}
+      >
+        <p className="text-red-600">
+          WARNING: This will permanently delete the vendor's data!
+        </p>
+        <p className="mt-2">
+          Are you absolutely sure you want to reject this vendor?
+          <span className="block mt-2 font-semibold">
+            This action cannot be undone and will remove all vendor information.
+          </span>
+        </p>
+      </Modal>
     </div>
   );
 }
