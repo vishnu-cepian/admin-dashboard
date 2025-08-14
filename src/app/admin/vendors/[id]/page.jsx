@@ -95,7 +95,7 @@ export default function VendorDetailsPage({ params }) {
     const fetchVendor = async () => {
       try {
         const response = await api.get(`/api/admin/getVendorById/${resolvedParams.id}`);
-        setVendor(response.data.data.vendor);
+        setVendor(response.data.data);
       } catch (error) {
         console.error('Failed to fetch vendor:', error);
         message.error('Failed to load vendor details');
@@ -159,14 +159,17 @@ export default function VendorDetailsPage({ params }) {
           <Descriptions.Item label="Owner Name">{vendor?.user?.name}</Descriptions.Item>
           <Descriptions.Item label="Email">{vendor?.user?.email}</Descriptions.Item>
           <Descriptions.Item label="Phone">{vendor?.user?.phoneNumber}</Descriptions.Item>
-          <Descriptions.Item label="Address">{vendor?.address}</Descriptions.Item>
+          <Descriptions.Item label="Address Line 1">{vendor?.addressLine1}</Descriptions.Item>
+          <Descriptions.Item label="Address Line 2">{vendor?.addressLine2}</Descriptions.Item>
           <Descriptions.Item label="Street">{vendor?.street}</Descriptions.Item>
           <Descriptions.Item label="City">{vendor?.city}</Descriptions.Item>
+          <Descriptions.Item label="District">{vendor?.district}</Descriptions.Item>
           <Descriptions.Item label="State">{vendor?.state}</Descriptions.Item>
           <Descriptions.Item label="Pincode">{vendor?.pincode}</Descriptions.Item>
           <Descriptions.Item label="Location Coordinates">
             {vendor?.location?.coordinates?.join(', ')}
           </Descriptions.Item>
+          <Descriptions.Item label="Landmark">{vendor?.landmark}</Descriptions.Item>
         </Descriptions>
       ),
     },
@@ -238,6 +241,20 @@ export default function VendorDetailsPage({ params }) {
             </button>
             ) : 'Not provided'}
           </Descriptions.Item>
+        </Descriptions>
+      ),
+    },
+    {
+      key: '5',
+      label: 'Stats',
+      icon: <ShopOutlined />,
+      children: (
+        <Descriptions bordered column={2}>
+          <Descriptions.Item label="Completed Orders">{vendor?.totalCompletedOrders}</Descriptions.Item>
+          <Descriptions.Item label="In Progress Orders">{vendor?.totalInProgressOrders}</Descriptions.Item>
+          <Descriptions.Item label="Pending Requests">{vendor?.totalPendingRequests}</Descriptions.Item>
+          <Descriptions.Item label="Total Earnings">{vendor?.totalEarnings}</Descriptions.Item>
+          <Descriptions.Item label="Total Deductions">-{vendor?.totalDeductions}</Descriptions.Item>
         </Descriptions>
       ),
     },
