@@ -45,39 +45,42 @@ export default function EditVendorPage({ params }) {
   // Shop types and service types for dropdowns
   const shopTypes = ['in-home', 'outlet'];
   const serviceTypes = ['tailors', 'laundry', 'other'];
-  const ownershipTypes = ['single', 'partnership', 'private limited'];
+  const ownershipTypes = ['single', 'partnership', 'private limited', 'limited liability partnership'];
 
   useEffect(() => {
     const fetchVendor = async () => {
       try {
         const response = await api.get(`/api/admin/getVendorById/${resolvedParams.id}`);
-        setVendor(response.data.data.vendor);
+        setVendor(response.data.data);
         form.setFieldsValue({
           // Basic Info
-          shopName: response.data.data.vendor.shopName,
-          shopType: response.data.data.vendor.shopType,
-          serviceType: response.data.data.vendor.serviceType,
-          ownershipType: response.data.data.vendor.ownershipType,
-          vendorServices: response.data.data.vendor.vendorServices,
-          shopDescription: response.data.data.vendor.shopDescription,
-          
+          shopName: response.data.data.shopName,
+          shopType: response.data.data.shopType,
+          serviceType: response.data.data.serviceType,
+          ownershipType: response.data.data.ownershipType,
+          vendorServices: response.data.data.vendorServices,
+          shopDescription: response.data.data.shopDescription,
+
           // Contact Info
-          name: response.data.data.vendor.user.name,
-          email: response.data.data.vendor.user.email,
-          phoneNumber: response.data.data.vendor.user.phoneNumber,
-          address: response.data.data.vendor.address,
-          street: response.data.data.vendor.street,
-          city: response.data.data.vendor.city,
-          state: response.data.data.vendor.state,
-          pincode: response.data.data.vendor.pincode,
-          
+          name: response.data.data.user.name,
+          email: response.data.data.user.email,
+          phoneNumber: response.data.data.user.phoneNumber,
+          addressLine1: response.data.data.addressLine1,
+          addressLine2: response.data.data.addressLine2,
+          district: response.data.data.district,
+          street: response.data.data.street,
+          city: response.data.data.city,
+          state: response.data.data.state,
+          pincode: response.data.data.pincode,
+          landmark: response.data.data.landmark,
+
           // Bank Details
-          accountHolderName: response.data.data.vendor.accountHolderName,
-          accountNumber: response.data.data.vendor.accountNumber,
-          ifscCode: response.data.data.vendor.ifscCode,
-          
+          accountHolderName: response.data.data.accountHolderName,
+          accountNumber: response.data.data.accountNumber,
+          ifscCode: response.data.data.ifscCode,
+
           // Documents
-          aadhaarNumber: response.data.data.vendor.aadhaarNumber,
+          aadhaarNumber: response.data.data.aadhaarNumber,
         });
       } catch (error) {
         console.error('Failed to fetch vendor:', error);
@@ -378,11 +381,26 @@ return (
                     </Form.Item>
 
                     <Form.Item
-                        label="Address"
-                        name="address"
-                        rules={[{ required: true, message: 'Please input address!' }]}
+                        label="Address Line 1"
+                        name="addressLine1"
+                        rules={[{ required: true, message: 'Please input address line 1!' }]}
                     >
-                        <Input placeholder="Enter address" />
+                        <Input placeholder="Enter address line 1" />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Address Line 2"
+                        name="addressLine2"
+                    >
+                        <Input placeholder="Enter address line 2" />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="District"
+                        name="district"
+                        rules={[{ required: true, message: 'Please input district!' }]}
+                    >
+                        <Input placeholder="Enter district" />
                     </Form.Item>
 
                     <Form.Item
@@ -415,6 +433,13 @@ return (
                         rules={[{ required: true, message: 'Please input pincode!' }]}
                     >
                         <Input placeholder="Enter pincode" />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Landmark"
+                        name="landmark"
+                    >
+                        <Input placeholder="Enter landmark" />
                     </Form.Item>
                 </div>
             </Card>
