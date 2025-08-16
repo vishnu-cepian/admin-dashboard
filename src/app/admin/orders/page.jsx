@@ -248,11 +248,12 @@ const OrdersPage = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'PENDING': return 'orange';
-      case 'ORDER_CONFIRMED': return 'blue';
-      case 'OUT_FOR_PICKUP': return 'geekblue';
+      // case 'ORDER_CONFIRMED': return 'blue';
+      // case 'OUT_FOR_PICKUP': return 'geekblue';
       case 'IN_PROGRESS': return 'purple';
-      case 'OUT_FOR_DELIVERY': return 'cyan';
+      // case 'OUT_FOR_DELIVERY': return 'cyan';
       case 'COMPLETED': return 'green';
+      case 'CANCELLED': return 'red';
       case 'REFUNDED': return 'red';
       default: return 'gray';
     }
@@ -281,11 +282,9 @@ const OrdersPage = () => {
               placeholder="Filter by Status"
               options={[
                 { value: 'PENDING', label: 'Pending' },
-                { value: 'ORDER_CONFIRMED', label: 'Confirmed' },
-                { value: 'OUT_FOR_PICKUP', label: 'Out for Pickup' },
                 { value: 'IN_PROGRESS', label: 'In Progress' },
-                { value: 'OUT_FOR_DELIVERY', label: 'Out for Delivery' },
                 { value: 'COMPLETED', label: 'Completed' },
+                { value: "CANCELLED", label: 'Cancelled' },
                 { value: 'REFUNDED', label: 'Refunded' },
               ]}
               value={filters.orderStatus}

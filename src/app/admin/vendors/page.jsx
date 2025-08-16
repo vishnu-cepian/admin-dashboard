@@ -219,7 +219,6 @@ export default function VendorListPage() {
                   { value: '', label: 'All Statuses' },
                   { value: 'PENDING', label: 'Pending' },
                   { value: 'VERIFIED', label: 'Verified' },
-                  { value: 'REJECTED', label: 'Rejected' },
                   { value: 'BLOCKED', label: 'Blocked' },
                 ]}
               />
