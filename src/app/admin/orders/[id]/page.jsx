@@ -2,14 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {  Card,  Descriptions,  Tag,  Tabs,  Table,  Button,  Space, Statistic, Timeline,Badge,Alert,Collapse } from 'antd';
-import { StarOutlined, ShopOutlined,CreditCardOutlined,  UserOutlined,  DollarOutlined,  ClockCircleOutlined,  CheckCircleOutlined , CloseCircleOutlined} from '@ant-design/icons';
+import { StarOutlined, ShopOutlined,CreditCardOutlined,  UserOutlined,  DollarOutlined,  ClockCircleOutlined,  CheckCircleOutlined , CloseCircleOutlined, ShopTwoTone, ClockCircleTwoTone, EnvironmentOutlined} from '@ant-design/icons';
 import api from '@/app/lib/api/axios';
+import Divider from 'antd/lib/divider';
 const { Panel } = Collapse;
 const OrderDetailPage = () => {
   const { id } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState(null);
   const [orderVendors, setOrderVendors] = useState([]);
+  const [orderStatusTimeline, setOrderStatusTimeline] = useState([]);
+  const [deliveryTracking, setDeliveryTracking] = useState([]);
   const [allQuotes, setAllQuotes] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,15 +21,19 @@ const OrderDetailPage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [orderRes, vendorsRes, paymentsRes] = await Promise.all([
+        const [orderRes, vendorsRes, paymentsRes, statusTimelineRes, deliveryRes] = await Promise.all([
           api.get(`/api/admin/getOrderById/${id}`),
           api.get(`/api/admin/getVendorResponse/${id}`),
-          api.get(`/api/admin/getPayments/${id}`)
+          api.get(`/api/admin/getPayments/${id}`),
+          api.get(`/api/admin/getOrderTimeline/${id}`),
+          api.get(`/api/admin/getDeliveryDetails/${id}`),
         ]);
-       
+
         setOrder(orderRes.data.data.order);
         setOrderVendors(vendorsRes.data.data);
-        setPayments(paymentsRes.data.data)
+        setPayments(paymentsRes.data.data);
+        setOrderStatusTimeline(statusTimelineRes.data.data);
+        setDeliveryTracking(deliveryRes.data.data);
 
         const quotesPromise = vendorsRes.data.data.map(vendor => 
           api.get(`/api/admin/getQuotes/${vendor.id}`)
@@ -117,49 +124,187 @@ const OrderDetailPage = () => {
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
-  const renderTimeline = () => {
-    const items = [];
-    const ts = order?.orderStatusTimestamp || {};
+ const renderTimeline = () => {
+  if (!orderStatusTimeline || orderStatusTimeline.length === 0) {
+    return <p>No timeline data available</p>;
+  }
 
-    // Common for both delivery types
-    if (ts.paidAt) items.push({ children: 'Payment Received', color: 'green', time: ts.paidAt });
-    if (ts.orderConfirmedAt) items.push({ children: 'Order Confirmed', color: 'green', time: ts.orderConfirmedAt });
-    if (ts.cancelledAt) items.push({ children: 'Order Cancelled', color: 'red', time: ts.cancelledAt });
-
-    // Two-way delivery specific
-    if (order?.clothProvided) {
-      if (ts.outForPickupFromCustomerAt) items.push({ children: 'Out for Pickup (Customer)', color: 'blue', time: ts.outForPickupFromCustomerAt });
-      if (ts.itemPickedFromCustomerAt) items.push({ children: 'Item Picked (Customer)', color: 'blue', time: ts.itemPickedFromCustomerAt });
-      if (ts.itemDeliveredToVendorAt) items.push({ children: 'Delivered to Vendor', color: 'blue', time: ts.itemDeliveredToVendorAt });
-      if (ts.vendorAcknowledgedItemAt) items.push({ children: 'Vendor Acknowledged', color: 'green', time: ts.vendorAcknowledgedItemAt });
-    }
-
-    // Common progress
-    if (ts.orderInProgressAt) items.push({ children: 'Work Started', color: 'purple', time: ts.orderInProgressAt });
-    if (ts.taskCompletedAt) items.push({ children: 'Work Completed', color: 'purple', time: ts.taskCompletedAt });
-
-    // Delivery back to customer
-    if (ts.outForPickupFromVendorAt) items.push({ children: 'Out for Pickup (Vendor)', color: 'cyan', time: ts.outForPickupFromVendorAt });
-    if (ts.itemPickedFromVendorAt) items.push({ children: 'Item Picked (Vendor)', color: 'cyan', time: ts.itemPickedFromVendorAt });
-    if (ts.itemDeliveredToCustomerAt) items.push({ children: 'Delivered to Customer', color: 'green', time: ts.itemDeliveredToCustomerAt });
-
-    // Refunds
-    if (ts.refundRequestedAt) items.push({ children: 'Refund Requested', color: 'orange', time: ts.refundRequestedAt });
-    if (ts.refundProcessedAt) items.push({ children: 'Refund Processed', color: 'red', time: ts.refundProcessedAt });
-    if (ts.completedAt) items.push({ children: 'Order Completed', color: 'green', time: ts.completed });
-
-    return (
-      <Timeline mode="alternate" items={items.map(item => ({
-        color: item.color,
-        children: (
-          <div>
-            <p>{item.children}</p>
-            <small>{new Date(item.time).toLocaleString()}</small>
-          </div>
-        )
-      }))} />
-    );
+  // Map status to display text and color
+  const statusMap = {
+    PENDING: { text: 'Order Created', color: 'gray' },
+    IN_PROGRESS: { text: 'Payment Successful', color: 'green' },
+    ITEM_PICKUP_FROM_CUSTOMER_SCHEDULED: { text: 'Pickup Scheduled', color: 'blue' },
+    ITEM_PICKED_UP_FROM_CUSTOMER: { text: 'Item Picked Up', color: 'blue' },
+    ITEM_DELIVERED_TO_VENDOR: { text: 'Delivered to Vendor', color: 'blue' },
+    ITEM_RECEIVED: { text: 'Vendor Received Item', color: 'green' },
+    WORK_STARTED: { text: 'Work Started', color: 'purple' },
+    ITEM_READY_FOR_PICKUP: { text: 'Work Completed', color: 'purple' },
+    ITEM_PICKED_UP_FROM_VENDOR: { text: 'Picked Up from Vendor', color: 'cyan' },
+    ITEM_DELIVERED_TO_CUSTOMER: { text: 'Delivered to Customer', color: 'green' },
+    CANCELLED: { text: 'Order Cancelled', color: 'red' },
+    REFUNDED: { text: 'Order Refunded', color: 'orange' }
   };
+
+  // Sort timeline by timestamp
+  const sortedTimeline = [...orderStatusTimeline].sort((a, b) => 
+    new Date(a.changedAt) - new Date(b.changedAt)
+  );
+
+  return (
+    <Timeline mode="alternate">
+      {sortedTimeline.map((entry) => {
+        const statusInfo = statusMap[entry.newStatus] || { 
+          text: entry.newStatus, 
+          color: 'gray' 
+        };
+        
+        return (
+          <Timeline.Item 
+            key={entry.id} 
+            color={statusInfo.color}
+            label={new Date(entry.changedAt).toLocaleString()}
+          >
+            <div className="font-medium">{statusInfo.text}</div>
+            <div className="text-xs text-gray-500">
+              {entry.notes || `Changed from ${entry.previousStatus || 'N/A'}`}
+            </div>
+            <div className="text-xs mt-1">
+              <Tag color="blue">{entry.changedByRole}</Tag>
+              {entry.changedBy && (
+                <Tag color="geekblue" className="ml-1">
+                  {entry.changedBy}
+                </Tag>
+              )}
+            </div>
+          </Timeline.Item>
+        );
+      })}
+    </Timeline>
+  );
+};
+
+const renderDeliveryTracking = () => {
+  if (!deliveryTracking || deliveryTracking.length === 0) {
+    return <p>No delivery tracking data available</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {deliveryTracking.map((tracking) => (
+        <Card 
+          key={tracking.id}
+          title={`${tracking.deliveryType === 'TO_VENDOR' ? 'To Vendor' : 'To Customer'} Delivery`}
+          className="mb-4"
+        >
+          <Timeline mode="left">
+            {renderDeliverySteps(tracking)}
+          </Timeline>
+
+          <Divider />
+          
+          <Descriptions bordered column={2}>
+            <Descriptions.Item label="Initiated By">
+              {tracking.from === 'VENDOR' ? 'Vendor' : 'Customer'}
+            </Descriptions.Item>
+            <Descriptions.Item label="Status">
+              <Tag color={tracking.status === 'DELIVERY_COMPLETE' ? 'green' : 'orange'}>
+                {tracking.status.replace('_', ' ')}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="Delivery ID">
+              {tracking.id}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+const renderDeliverySteps = (tracking) => {
+  const steps = [];
+  const details = tracking.statusUpdateTimeStamp;
+  
+  // Add pickup steps
+  if (details.pickup_assigned_at) {
+    steps.push({
+      color: 'blue',
+      label: formatDateTime(details.pickup_assigned_at),
+      children: 'Pickup assigned'
+    });
+  }
+  
+  if (details.pickup_in_transit_at) {
+    steps.push({
+      color: 'blue',
+      label: formatDateTime(details.pickup_in_transit_at),
+      children: 'Pickup in transit'
+    });
+  }
+  
+  if (details.pickup_completed_at) {
+    steps.push({
+      color: 'green',
+      label: formatDateTime(details.pickup_completed_at),
+      children: 'Pickup completed'
+    });
+  }
+  
+  // Add delivery steps
+  if (details.delivery_in_transit_at) {
+    steps.push({
+      color: 'blue',
+      label: formatDateTime(details.delivery_in_transit_at),
+      children: 'Delivery in transit'
+    });
+  }
+  
+  if (details.delivery_completed_at) {
+    steps.push({
+      color: 'green',
+      label: formatDateTime(details.delivery_completed_at),
+      children: 'Delivery completed'
+    });
+  }
+  
+  // Add failed/cancelled steps if applicable
+  if (details.delivery_failed_at) {
+    steps.push({
+      color: 'red',
+      label: formatDateTime(details.delivery_failed_at),
+      children: 'Delivery failed'
+    });
+  }
+  
+  if (details.delivery_cancelled_at) {
+    steps.push({
+      color: 'red',
+      label: formatDateTime(details.delivery_cancelled_at),
+      children: 'Delivery cancelled'
+    });
+  }
+
+  // Sort steps by time
+  steps.sort((a, b) => new Date(a.label) - new Date(b.label));
+
+  return steps.map((step, index) => (
+    <Timeline.Item key={index} color={step.color}>
+      <div className="font-medium">{step.children}</div>
+      <div className="text-sm text-gray-500">{step.label}</div>
+    </Timeline.Item>
+  ));
+};
+
+const formatDateTime = (dateString) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
 
   const vendorColumns = [
     {
@@ -324,6 +469,12 @@ const paymentColumns = [
       children: renderTimeline()
     },
     {
+      key: 'delivery',
+      label: 'Delivery Tracking',
+      icon: <EnvironmentOutlined />,
+      children: renderDeliveryTracking()
+    },
+    {
       key: 'vendors',
       label: 'Vendor Responses',
       icon: <ShopOutlined />,
@@ -404,6 +555,38 @@ const paymentColumns = [
         />
       )
     },
+    {
+      key: 'Additional',
+      label: 'Shipment Address & Other Details',
+      icon: <ShopTwoTone />,
+      children: (
+        <Descriptions bordered column={2}>
+          <Descriptions.Item label="Full Name">{order?.fullName}</Descriptions.Item>
+          <Descriptions.Item label="Phone Number">{order?.phoneNumber}</Descriptions.Item>
+          <Descriptions.Item label="Address Line 1">{order?.addressLine1}</Descriptions.Item>
+          <Descriptions.Item label="Address Line 2">{order?.addressLine2}</Descriptions.Item>
+          <Descriptions.Item label="District">{order?.district}</Descriptions.Item>
+          <Descriptions.Item label="State">{order?.state}</Descriptions.Item>
+          <Descriptions.Item label="Street">{order?.street}</Descriptions.Item>
+          <Descriptions.Item label="City">{order?.city}</Descriptions.Item>
+          <Descriptions.Item label="Pincode">{order?.pincode}</Descriptions.Item>
+          <Descriptions.Item label="Landmark">{order?.landmark}</Descriptions.Item>
+          <Descriptions.Item label="Address Type">{order?.addressType}</Descriptions.Item>
+        </Descriptions>
+      ),
+    },
+    {
+      key: 'stats',
+      label: 'Order Stats',
+      icon: <ClockCircleTwoTone />,
+      children: (
+        <Descriptions bordered column={2}>
+          <Descriptions.Item label="Order Pending At">{order?.orderStatusTimestamp?.pendingAt}</Descriptions.Item>
+          <Descriptions.Item label="Order In-Progress At">{order?.orderStatusTimestamp?.inProgressAt}</Descriptions.Item>
+          <Descriptions.Item label="Order Completed At">{order?.orderStatusTimestamp?.completedAt}</Descriptions.Item>
+        </Descriptions>
+      ),
+    },
   ];
 
   if (loading) return <Card loading />;
@@ -425,27 +608,27 @@ const paymentColumns = [
                 </Button>
               </Space>
             </div>
-      <Card title={`Order #${order.id}`} loading={loading}>
+      <Card title={`Order #${order?.id}`} loading={loading}>
         <Descriptions bordered column={2}>
           <Descriptions.Item label="Customer">
-            <a href={`/admin/customers/${order.customerId}`}>
-              {order.customerId}
+            <a href={`/admin/customers/${order?.customerId}`}>
+              {order?.customerId}
             </a>
           </Descriptions.Item>
           <Descriptions.Item label="Vendor">
-            <a href={`/admin/vendors/${order.selectedVendorId}`}>
-              {order.selectedVendorId}
+            <a href={`/admin/vendors/${order?.selectedVendorId}`}>
+              {order?.selectedVendorId}
             </a>
           </Descriptions.Item>
           <Descriptions.Item label="Status">
-            {renderStatusTag(order.orderStatus)}
+            {renderStatusTag(order?.orderStatus)}
           </Descriptions.Item>
           <Descriptions.Item label="Payment Status">
             <Space>
-              <Tag color={order.isPaid ? 'green' : 'red'}>
-                {order.isPaid ? 'PAID' : 'UNPAID'}
+              <Tag color={order?.isPaid ? 'green' : 'red'}>
+                {order?.isPaid ? 'PAID' : 'UNPAID'}
               </Tag>
-              {order.isRefunded && <Tag color="orange">REFUNDED</Tag>}
+              {order?.isRefunded && <Tag color="orange">REFUNDED</Tag>}
             </Space>
           </Descriptions.Item>
           <Descriptions.Item label="Required By">
@@ -454,14 +637,26 @@ const paymentColumns = [
           <Descriptions.Item label="Delivery Type">
             {order.clothProvided ? 'Two-Way' : 'One-Way'}
           </Descriptions.Item>
+          <Descriptions.Item label="Order Name">
+            {order?.orderName}
+          </Descriptions.Item>
+          <Descriptions.Item label="Order Type">
+            {order?.orderType}
+          </Descriptions.Item>
+          <Descriptions.Item label="Order Preference">
+            {order?.orderPreference}
+          </Descriptions.Item>
+          <Descriptions.Item label="Finish By Date">
+            {order?.finishByDate}
+          </Descriptions.Item>
           <Descriptions.Item label="Final Quote Id">
             {/* <a href={`/admin/quotes/${order.finalQuoteId}`}> */}
-              {order.finalQuoteId}
+              {order?.finalQuoteId}
             {/* </a> */}
           </Descriptions.Item>
           <Descriptions.Item label="Final Payment Id">
             {/* <a href={`/admin/payments/${order.paymentId}`}> */}
-              {order.paymentId}
+              {order?.paymentId}
             {/* </a> */}
           </Descriptions.Item>
           <Descriptions.Item label="Total Paid">
