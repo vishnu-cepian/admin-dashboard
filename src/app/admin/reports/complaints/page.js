@@ -133,7 +133,7 @@ export default function ComplaintsPage() {
         params,
         responseType: 'blob'
       });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
