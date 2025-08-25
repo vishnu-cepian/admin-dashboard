@@ -3,7 +3,7 @@ import React from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import api from "@/app/lib/api/axios";
-import { Button, Card, Descriptions, message, Skeleton, Tag, Space, Image, Tabs, Divider, Modal } from 'antd';
+import { Button, Card, Descriptions, message, Skeleton, Tag, Space, Image, Tabs, Divider, Modal, Input } from 'antd';
 import { EnvironmentOutlined, BankOutlined, IdcardOutlined, ShopOutlined } from '@ant-design/icons';
 import {fileView} from '@/app/lib/s3/fileView';
 
@@ -15,6 +15,7 @@ export default function VendorDetailsPage({ params }) {
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   const router = useRouter();
 
   const resolvedParams = React.use(params);
@@ -58,25 +59,36 @@ export default function VendorDetailsPage({ params }) {
   };
 
   // Reject Vendor
-  const showRejectModal = () => setIsRejectModalOpen(true);
-  const handleRejectCancel = () => setIsRejectModalOpen(false);
+  const showRejectModal = () => {
+    setRejectionReason(''); // Reset reason when modal opens
+    setIsRejectModalOpen(true);
+  };
+  const handleRejectCancel = () => {
+    setIsRejectModalOpen(false);
+    setRejectionReason(''); // Clear reason when modal closes
+  };
   const rejectVendor = async () => {
+    if (!rejectionReason.trim()) {
+      message.error('Please provide a reason for rejection');
+      return;
+    }
+
     setProcessing(true);
     try {
-      await api.delete(`/api/admin/rejectVendor/${resolvedParams.id}`);
+      // Send rejection reason in the request body
+      await api.delete(`/api/admin/rejectVendor/${resolvedParams.id}`, {
+        data: { rejectionReason: rejectionReason.trim() }
+      });
       message.success('Vendor rejected successfully');
       router.push('/admin/vendors');
     } catch (error) {
-      // Modal.error({
-      //   title: 'Reject Failed',
-      //   content: 'This will permanently delete the vendor\'s data! Are you sure you want to proceed?',
-      // });
       alert(error.response?.data?.message || 'Failed to reject vendor');
       console.error('Failed to reject vendor:', error);
       message.error('Failed to reject vendor');
     } finally {
       setProcessing(false);
       setIsRejectModalOpen(false);
+      setRejectionReason(''); // Clear reason after operation
     }
   };
 
@@ -424,7 +436,7 @@ export default function VendorDetailsPage({ params }) {
         </p>
       </Modal>
 
-      {/* Reject Modal */}
+      {/* Reject Modal with Reason Input */}
       <Modal
         title="⚠️ Confirm Reject Vendor"
         open={isRejectModalOpen}
@@ -433,12 +445,33 @@ export default function VendorDetailsPage({ params }) {
         okText="Yes, Reject"
         cancelText="Cancel"
         confirmLoading={processing}
-        okButtonProps={{ danger: true }}
+        okButtonProps={{ 
+          danger: true,
+          disabled: !rejectionReason.trim() // Disable if no reason provided
+        }}
       >
-        <p className="text-red-600">
+        <p className="text-red-600 font-semibold mb-4">
           WARNING: This will permanently delete the vendor's data!
         </p>
-        <p className="mt-2">
+        
+        <div className="mb-4">
+          <label className="block text-gray-700 mb-2 font-medium">
+            Reason for Rejection *
+          </label>
+          <Input.TextArea
+            rows={4}
+            placeholder="Please provide a detailed reason for rejecting this vendor..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            required
+            className="w-full"
+          />
+          <p className="text-gray-500 text-sm mt-1">
+            This reason will be recorded and may be communicated to the vendor.
+          </p>
+        </div>
+        
+        <p className="mt-4">
           Are you absolutely sure you want to reject this vendor?
           <span className="block mt-2 font-semibold">
             This action cannot be undone and will remove all vendor information.
