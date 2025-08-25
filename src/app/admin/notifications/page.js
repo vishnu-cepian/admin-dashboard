@@ -26,7 +26,7 @@ export default function NotificationsPage() {
       return;
     }
     // fetchNotificationHistory();
-  }, []);
+  }, [router]); // Added router to dependency array
 
   // const fetchNotificationHistory = async () => {
   //   try {

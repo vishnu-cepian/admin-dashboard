@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAccessToken, removeTokens } from '@/app/lib/auth/actions';
 import api from '@/app/lib/api/axios';
 import { 
@@ -29,18 +29,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const token = getAccessToken();
- 
-    if (!token) {
-      router.push("/admin/login");
-    } else {
-      setAdminEmail("admin@nexs.com"); 
-      fetchStats();
-    }
-  }, []);
-
-  const fetchStats = async () => {
+  // Wrap fetchStats in useCallback to prevent unnecessary recreations
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get("/api/admin/stats");
@@ -60,7 +50,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     removeTokens();
@@ -82,6 +72,21 @@ export default function DashboardPage() {
   const manageCustomers = () => {
     router.push("/admin/customers")
   }
+
+  const manageSettings = () => {
+    router.push("/admin/settings")
+  }
+
+  useEffect(() => {
+    const token = getAccessToken();
+ 
+    if (!token) {
+      router.push("/admin/login");
+    } else {
+      setAdminEmail("admin@nexs.com"); 
+      fetchStats();
+    }
+  }, [router, fetchStats]); // Added dependencies
 
   const quickActions = [
     {
@@ -122,7 +127,7 @@ export default function DashboardPage() {
     {
       title: "Settings",
       icon: <Settings className="w-6 h-6" />,
-      onClick: () => {},
+      onClick: manageSettings,
       color: "bg-gray-500/10 hover:bg-gray-500/20",
       iconColor: "text-gray-600"
     }
