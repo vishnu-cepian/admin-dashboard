@@ -52,7 +52,10 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await api.patch("/api/admin/logout").catch((err) => {
+      console.error("Error logging out:", err);
+    });
     removeTokens();
     router.push("/admin/login");
   };
@@ -77,6 +80,9 @@ export default function DashboardPage() {
     router.push("/admin/settings")
   }
 
+  const manageReports = () => {
+    router.push("/admin/reports")
+  }
   useEffect(() => {
     const token = getAccessToken();
  
@@ -120,7 +126,7 @@ export default function DashboardPage() {
     {
       title: "Reports",
       icon: <BarChart3 className="w-6 h-6" />,
-      onClick: () => {},
+      onClick: manageReports,
       color: "bg-indigo-500/10 hover:bg-indigo-500/20",
       iconColor: "text-indigo-600"
     },
