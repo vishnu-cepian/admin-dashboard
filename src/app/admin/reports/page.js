@@ -216,7 +216,7 @@ const fetchHealth = async () => {
             <Button 
               icon={<ReloadOutlined />} 
               size="large"
-              onClick={() => { fetchReportStats(); fetchRecentActivities(); }}
+              onClick={() => { fetchReportStats(); }}
               loading={loading}
             >
               Refresh Data
@@ -328,15 +328,15 @@ const fetchHealth = async () => {
                 </span>
               }
               className="rounded-xl shadow-sm border-0 h-full"
-              extra={
-                <Button 
-                  type="link" 
-                  icon={<EyeOutlined />}
-                  onClick={() => router.push('/admin/activities')}
-                >
-                  View All
-                </Button>
-              }
+            //   extra={
+            //     <Button 
+            //       type="link" 
+            //       icon={<EyeOutlined />}
+            //       onClick={() => router.push('/admin/activities')}
+            //     >
+            //       View All
+            //     </Button>
+            //   }
             >
               <List
                 itemLayout="horizontal"
@@ -347,9 +347,9 @@ const fetchHealth = async () => {
                     onClick={() => {
                       // Navigate to appropriate detail page based on activity type
                       if (item.type === 'complaint') {
-                        router.push('/admin/complaints');
+                        router.push('/admin/reports/complaints');
                       } else if (item.type === 'payment') {
-                        router.push('/admin/payments');
+                        router.push('/admin/reports/payments');
                       }
                       // Add more conditions for other activity types
                     }}
