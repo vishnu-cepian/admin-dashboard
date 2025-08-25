@@ -20,6 +20,7 @@ import {
 export default function DashboardPage() {
   const router = useRouter();
   const [adminEmail, setAdminEmail] = useState("");
+  const [lastLoginTime, setLastLoginTime] = useState("");
   const [stats, setStats] = useState({
     totalCustomers: 0,
     totalVendors: 0,
@@ -35,6 +36,16 @@ export default function DashboardPage() {
       setLoading(true);
       const response = await api.get("/api/admin/stats");
      
+      const loginResponse = await api.get("/api/admin/loginHistory",
+        {
+          params: {
+            page: 2,
+            limit: 1
+          }
+        }
+      )
+    
+      setLastLoginTime(new Date(loginResponse.data.data.loginHistory[0]?.loginTime).toLocaleString() || "N/A");
       setStats({
         totalCustomers: response.data.data.totalCustomers || 0,
         totalVendors: response.data.data.totalVendors || 0,
@@ -252,7 +263,7 @@ export default function DashboardPage() {
             </p>
             <div className="flex items-center gap-4">
               <UserCheck className="w-5 h-5" />
-              <span className="text-sm">Last login: Today at {new Date().toLocaleTimeString()}</span>
+              <span className="text-sm">Last login: {lastLoginTime}</span>
             </div>
           </div>
         </div>
