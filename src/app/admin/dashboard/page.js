@@ -14,7 +14,8 @@ import {
   BarChart3,
   UserCheck,
   TrendingUp,
-  Shield
+  Shield,
+  ShoppingCartIcon
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -25,7 +26,8 @@ export default function DashboardPage() {
     totalCustomers: 0,
     totalVendors: 0,
     pendingApprovals: 0,
-    totalOrders: 0
+    completedOrders: 0,
+    inProgressOrders: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,7 +52,8 @@ export default function DashboardPage() {
         totalCustomers: response.data.data.totalCustomers || 0,
         totalVendors: response.data.data.totalVendors || 0,
         pendingApprovals: response.data.data.totalUnverifiedVendors || 0,
-        totalOrders: response.data.data.totalOrders || 0
+        completedOrders: response.data.data.completedOrders || 0,
+        inProgressOrders: response.data.data.inProgressOrders || 0
       });
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load statistics");
@@ -222,9 +225,16 @@ export default function DashboardPage() {
             color="amber"
           />
           <DashboardCard 
-            title="Total Orders" 
-            value={stats.totalOrders} 
+            title="Completed Orders" 
+            value={stats.completedOrders} 
             icon={<ShoppingCart className="w-5 h-5" />}
+            // trend="+23%"
+            color="purple"
+          />
+          <DashboardCard 
+            title="Ongoing Orders" 
+            value={stats.inProgressOrders} 
+            icon={<ShoppingCartIcon className="w-5 h-5" />}
             // trend="+23%"
             color="purple"
           />
