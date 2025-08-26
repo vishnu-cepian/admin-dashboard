@@ -239,7 +239,7 @@ export default function RefundsPage() {
       dataIndex: 'id',
       key: 'id',
       width: 200,
-      render: (id) => <Text copyable>{id.substring(0, 8)}...</Text>
+      render: (id) => <Text copyable>{id}</Text>
     },
     {
       title: 'Payment ID',
