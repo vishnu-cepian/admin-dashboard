@@ -191,6 +191,8 @@ export default function VendorDetailsPage({ params }) {
       icon: <BankOutlined />,
       children: (
         <Descriptions bordered column={2}>
+          <Descriptions.Item label="Razorpay Contact ID">{vendor?.razorpay_contact_id ? <span>{vendor.razorpay_contact_id}</span> : 'Not registered (verify first)'}</Descriptions.Item>
+          <Descriptions.Item label="Razorpay Fund Account ID">{vendor?.razorpay_fund_account_id ? <span>{vendor.razorpay_fund_account_id}</span> : 'Not registered (verify first)'}</Descriptions.Item>
           <Descriptions.Item label="Account Holder">{vendor?.accountHolderName}</Descriptions.Item>
           <Descriptions.Item label="Account Number">{vendor?.accountNumber}</Descriptions.Item>
           <Descriptions.Item label="IFSC Code">{vendor?.ifscCode}</Descriptions.Item>

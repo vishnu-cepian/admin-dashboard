@@ -75,6 +75,8 @@ export default function EditVendorPage({ params }) {
           landmark: response.data.data.landmark,
 
           // Bank Details
+          razorpay_contact_id: response.data.data.razorpay_contact_id,
+          razorpay_fund_account_id: response.data.data.razorpay_fund_account_id,
           accountHolderName: response.data.data.accountHolderName,
           accountNumber: response.data.data.accountNumber,
           ifscCode: response.data.data.ifscCode,
@@ -446,6 +448,20 @@ return (
 
             <Card title="Bank Details" className="mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <Form.Item
+                        label="Razorpay Contact ID"
+                        name="razorpay_contact_id"
+                        rules={[{ required: true, message: 'Please input Razorpay contact ID!' }]}
+                    >
+                        <Input placeholder="Enter Razorpay contact ID" />
+                    </Form.Item>
+                     <Form.Item
+                        label="Razorpay Fund Account ID"
+                        name="razorpay_fund_account_id"
+                        rules={[{ required: true, message: 'Please input Razorpay fund account ID!' }]}
+                    >
+                        <Input placeholder="Enter Razorpay fund account ID" />
+                    </Form.Item>
                     <Form.Item
                         label="Account Holder Name"
                         name="accountHolderName"
