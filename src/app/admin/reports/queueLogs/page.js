@@ -76,10 +76,10 @@ export default function QueueLogsPage() {
       });
 
       // Extract unique queue names for filter dropdown
-      if (res.data.data.queueLogs && res.data.data.queueLogs.length > 0) {
-        const uniqueQueueNames = [...new Set(res.data.data.queueLogs.map(log => log.queueName))];
-        setQueueNames(uniqueQueueNames);
-      }
+    //   if (res.data.data.queueLogs && res.data.data.queueLogs.length > 0) {
+    //     const uniqueQueueNames = [...new Set(res.data.data.queueLogs.map(log => log.queueName))];
+        setQueueNames(['emailQueue', 'pushQueue', 'phoneQueue']);
+    //   }
     } catch (err) {
       console.error(err);
       message.error("Failed to load queue logs");
