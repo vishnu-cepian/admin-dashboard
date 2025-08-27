@@ -15,7 +15,9 @@ import {
   UserCheck,
   TrendingUp,
   Shield,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  DollarSign,
+  CreditCard
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -27,7 +29,8 @@ export default function DashboardPage() {
     totalVendors: 0,
     pendingApprovals: 0,
     completedOrders: 0,
-    inProgressOrders: 0
+    inProgressOrders: 0,
+    pendingPayouts: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,7 +48,7 @@ export default function DashboardPage() {
             limit: 1
           }
         }
-      )
+      );
     
       setLastLoginTime(new Date(loginResponse.data.data.loginHistory[0]?.loginTime).toLocaleString() || "N/A");
       setStats({
@@ -53,7 +56,8 @@ export default function DashboardPage() {
         totalVendors: response.data.data.totalVendors || 0,
         pendingApprovals: response.data.data.totalUnverifiedVendors || 0,
         completedOrders: response.data.data.completedOrders || 0,
-        inProgressOrders: response.data.data.inProgressOrders || 0
+        inProgressOrders: response.data.data.inProgressOrders || 0,
+        pendingPayouts: response.data.data.pendingPayouts || 0
       });
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load statistics");
@@ -97,6 +101,11 @@ export default function DashboardPage() {
   const manageReports = () => {
     router.push("/admin/reports")
   }
+
+  const managePayouts = () => {
+    router.push("/admin/payouts")
+  }
+
   useEffect(() => {
     const token = getAccessToken();
  
@@ -122,6 +131,13 @@ export default function DashboardPage() {
       onClick: manageVendors,
       color: "bg-green-500/10 hover:bg-green-500/20",
       iconColor: "text-green-600"
+    },
+    {
+      title: "Manage Payouts",
+      icon: <DollarSign className="w-6 h-6" />,
+      onClick: managePayouts,
+      color: "bg-amber-500/10 hover:bg-amber-500/20",
+      iconColor: "text-amber-600"
     },
     {
       title: "Notifications",
@@ -182,7 +198,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-8xl mx-auto"> {/* Increased from max-w-7xl to max-w-8xl */}
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 p-6 bg-white rounded-2xl shadow-sm">
           <div className="mb-4 sm:mb-0">
@@ -202,7 +218,7 @@ export default function DashboardPage() {
         </header>
         
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8"> {/* Added xl:grid-cols-6 */}
           <DashboardCard 
             title="Total Customers" 
             value={stats.totalCustomers} 
@@ -225,6 +241,13 @@ export default function DashboardPage() {
             color="amber"
           />
           <DashboardCard 
+            title="Pending Payouts" 
+            value={stats.pendingPayouts} 
+            icon={<CreditCard className="w-5 h-5" />}
+            trend={stats.pendingPayouts > 0 ? "Action required" : "All clear"}
+            color="red"
+          />
+          <DashboardCard 
             title="Completed Orders" 
             value={stats.completedOrders} 
             icon={<ShoppingCart className="w-5 h-5" />}
@@ -236,7 +259,7 @@ export default function DashboardPage() {
             value={stats.inProgressOrders} 
             icon={<ShoppingCartIcon className="w-5 h-5" />}
             // trend="+23%"
-            color="purple"
+            color="indigo"
           />
         </div>
 
@@ -247,7 +270,7 @@ export default function DashboardPage() {
             <TrendingUp className="w-5 h-5 text-gray-400" />
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4"> {/* Changed to 7 columns */}
             {quickActions.map((action, index) => (
               <button
                 key={index}
@@ -269,7 +292,7 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold mb-4">Welcome to Nexs Admin Panel</h2>
             <p className="text-blue-100 mb-6">
               Manage your platform efficiently with real-time insights and powerful tools. 
-              Everything you need to oversee customers, vendors, and orders is right here.
+              Everything you need to oversee customers, vendors, orders, and payouts is right here.
             </p>
             <div className="flex items-center gap-4">
               <UserCheck className="w-5 h-5" />
@@ -287,7 +310,18 @@ function DashboardCard({ title, value, icon, trend, color }) {
     blue: 'bg-blue-500/10 text-blue-600',
     green: 'bg-green-500/10 text-green-600',
     amber: 'bg-amber-500/10 text-amber-600',
-    purple: 'bg-purple-500/10 text-purple-600'
+    purple: 'bg-purple-500/10 text-purple-600',
+    indigo: 'bg-indigo-500/10 text-indigo-600',
+    red: 'bg-red-500/10 text-red-600'
+  };
+
+  const trendClasses = {
+    blue: 'bg-blue-100 text-blue-800',
+    green: 'bg-green-100 text-green-800',
+    amber: 'bg-amber-100 text-amber-800',
+    purple: 'bg-purple-100 text-purple-800',
+    indigo: 'bg-indigo-100 text-indigo-800',
+    red: 'bg-red-100 text-red-800'
   };
 
   return (
@@ -296,11 +330,11 @@ function DashboardCard({ title, value, icon, trend, color }) {
         <div className={`p-3 rounded-xl ${colorClasses[color]}`}>
           {icon}
         </div>
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-          color === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
-        }`}>
-          {trend}
-        </span>
+        {trend && (
+          <span className={`text-xs font-medium px-2 py-1 rounded-full ${trendClasses[color]}`}>
+            {trend}
+          </span>
+        )}
       </div>
       <div className="text-gray-500 text-sm font-medium mb-1">{title}</div>
       <div className="text-3xl font-bold text-gray-900">{value.toLocaleString()}</div>
