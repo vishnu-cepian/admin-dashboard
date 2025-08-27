@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Card, Row, Col, Statistic, Typography, Button, DatePicker,
@@ -26,51 +26,51 @@ export default function ReportsPage() {
   const [reportStats, setReportStats] = useState(null);
   const [recentActivities, setRecentActivities] = useState([]);
 
-  const fetchReportStats = async () => {
-    try {
-      setLoading(true);
- 
-      const res = await api.get("/api/admin/reports",
-        {
-          params: {
-            from: dateRange[0].toISOString(),
-            to: dateRange[1].toISOString(),
-            reportType
-          }
+  const fetchReportStats = useCallback(async () => {
+  try {
+    setLoading(true);
+
+    const res = await api.get("/api/admin/reports",
+      {
+        params: {
+          from: dateRange[0].toISOString(),
+          to: dateRange[1].toISOString(),
+          reportType
         }
-      );
-      
-      setReportStats(res.data.data.stats);
-      setRecentActivities(res.data.data.recentActivities);
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load report stats");
-    } finally {
-      setLoading(false);
-    }
-  };
+      }
+    );
+    
+    setReportStats(res.data.data.stats);
+    setRecentActivities(res.data.data.recentActivities);
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load report stats");
+  } finally {
+    setLoading(false);
+  }
+}, [dateRange, reportType]); // Add dependencies
 
-const fetchHealth = async () => {
-    try {
-      const res = await api.get("/api/health");
-      setHealth({
-        status: res.data.status,
-        uptime: (res.data.uptime / (1000 * 60 )).toFixed(2),
-        systemCpuUsage: res.data.cpuUsage.system,
-        userCpuUsage: res.data.cpuUsage.user,
-        totalMem: (res.data.totalMem / (1024 * 1024)).toFixed(2),
-        freeMem: (res.data.freeMem / (1024 * 1024)).toFixed(2)
-      });
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load health status");
-    }
-  };
+const fetchHealth = useCallback(async () => {
+  try {
+    const res = await api.get("/api/health");
+    setHealth({
+      status: res.data.status,
+      uptime: (res.data.uptime / (1000 * 60 )).toFixed(2),
+      systemCpuUsage: res.data.cpuUsage.system,
+      userCpuUsage: res.data.cpuUsage.user,
+      totalMem: (res.data.totalMem / (1024 * 1024)).toFixed(2),
+      freeMem: (res.data.freeMem / (1024 * 1024)).toFixed(2)
+    });
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load health status");
+  }
+}, []); // Empty dependency array since it doesn't use any external variables
 
-  useEffect(() => {
-    fetchReportStats();
-    fetchHealth();
-  }, [dateRange, reportType]);
+useEffect(() => {
+  fetchReportStats();
+  fetchHealth();
+}, [fetchReportStats, fetchHealth, dateRange, reportType]); // Add all dependencies
 
 //   const generateReport = () => {
 //     message.loading("Generating report...");

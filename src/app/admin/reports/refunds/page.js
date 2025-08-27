@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, DatePicker,
@@ -41,50 +41,50 @@ export default function RefundsPage() {
   const [selectedRefund, setSelectedRefund] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const fetchRefunds = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      
-      const params = {
-        page,
-        limit: pageSize,
-        paymentId: filters.paymentId || undefined,
-        status: filters.status !== 'all' ? filters.status : undefined
-      };
-      
-      // Add date range if provided
-      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-        params.from = filters.dateRange[0].toISOString();
-        params.to = filters.dateRange[1].toISOString();
-      }
-      
-      const res = await api.get("/api/admin/getRefundsList", { params });
-      
-      setRefunds(res.data.data.refunds);
-      setPagination({
-        current: res.data.data.pagination.currentPage,
-        pageSize: res.data.data.pagination.itemsPerPage,
-        total: res.data.data.pagination.totalItems
-      });
-      
-      // Set statistics
-      setStats({
-        totalCount: res.data.data.totalCount || 0,
-        totalAmount: res.data.data.totalAmount || 0,
-        filteredCount: res.data.data.filteredCount || 0,
-        filteredAmount: res.data.data.filteredAmount || 0
-      });
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load refunds");
-    } finally {
-      setLoading(false);
+  const fetchRefunds = useCallback(async (page = 1, pageSize = 10) => {
+  try {
+    setLoading(true);
+    
+    const params = {
+      page,
+      limit: pageSize,
+      paymentId: filters.paymentId || undefined,
+      status: filters.status !== 'all' ? filters.status : undefined
+    };
+    
+    // Add date range if provided
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+      params.from = filters.dateRange[0].toISOString();
+      params.to = filters.dateRange[1].toISOString();
     }
-  };
+    
+    const res = await api.get("/api/admin/getRefundsList", { params });
+    
+    setRefunds(res.data.data.refunds);
+    setPagination({
+      current: res.data.data.pagination.currentPage,
+      pageSize: res.data.data.pagination.itemsPerPage,
+      total: res.data.data.pagination.totalItems
+    });
+    
+    // Set statistics
+    setStats({
+      totalCount: res.data.data.totalCount || 0,
+      totalAmount: res.data.data.totalAmount || 0,
+      filteredCount: res.data.data.filteredCount || 0,
+      filteredAmount: res.data.data.filteredAmount || 0
+    });
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load refunds");
+  } finally {
+    setLoading(false);
+  }
+}, [filters]); // Add filters as dependency
 
-  useEffect(() => {
-    fetchRefunds();
-  }, []);
+useEffect(() => {
+  fetchRefunds();
+}, [fetchRefunds]); // Add fetchRefunds as dependency
 
   const handleTableChange = (pagination, filters, sorter) => {
     fetchRefunds(pagination.current, pagination.pageSize);

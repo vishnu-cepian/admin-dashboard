@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, DatePicker,
@@ -42,51 +42,51 @@ export default function PaymentsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [paymentMethodStatusFilter, setPaymentMethodStatusFilter] = useState('all');
 
-  const fetchPayments = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      
-      const params = {
-        page,
-        limit: pageSize,
-        orderId: filters.orderId || undefined,
-        razorpayPaymentId: filters.razorpayPaymentId || undefined,
-        paymentMethod: paymentMethodStatusFilter !== 'all' ? paymentMethodStatusFilter : undefined
-      };
-      
-      // Add date range if provided
-      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-        params.from = filters.dateRange[0].toISOString();
-        params.to = filters.dateRange[1].toISOString();
-      }
-      
-      const res = await api.get("/api/admin/getPaymentsList", { params });
-      
-      setPayments(res.data.data.payments);
-      setPagination({
-        current: res.data.data.pagination.currentPage,
-        pageSize: res.data.data.pagination.itemsPerPage,
-        total: res.data.data.pagination.totalItems
-      });
-      
-      // Set statistics
-      setStats({
-        totalCount: res.data.data.totalCount || 0,
-        totalAmount: res.data.data.totalAmount || 0,
-        filteredCount: res.data.data.filteredCount || 0,
-        filteredAmount: res.data.data.filteredAmount || 0
-      });
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load payments");
-    } finally {
-      setLoading(false);
+  const fetchPayments = useCallback(async (page = 1, pageSize = 10) => {
+  try {
+    setLoading(true);
+    
+    const params = {
+      page,
+      limit: pageSize,
+      orderId: filters.orderId || undefined,
+      razorpayPaymentId: filters.razorpayPaymentId || undefined,
+      paymentMethod: paymentMethodStatusFilter !== 'all' ? paymentMethodStatusFilter : undefined
+    };
+    
+    // Add date range if provided
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+      params.from = filters.dateRange[0].toISOString();
+      params.to = filters.dateRange[1].toISOString();
     }
-  };
+    
+    const res = await api.get("/api/admin/getPaymentsList", { params });
+    
+    setPayments(res.data.data.payments);
+    setPagination({
+      current: res.data.data.pagination.currentPage,
+      pageSize: res.data.data.pagination.itemsPerPage,
+      total: res.data.data.pagination.totalItems
+    });
+    
+    // Set statistics
+    setStats({
+      totalCount: res.data.data.totalCount || 0,
+      totalAmount: res.data.data.totalAmount || 0,
+      filteredCount: res.data.data.filteredCount || 0,
+      filteredAmount: res.data.data.filteredAmount || 0
+    });
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load payments");
+  } finally {
+    setLoading(false);
+  }
+}, [filters, paymentMethodStatusFilter]); // Add all dependencies
 
-  useEffect(() => {
-    fetchPayments();
-  }, []);
+useEffect(() => {
+  fetchPayments();
+}, [fetchPayments]); // Add fetchPayments as dependency
 
   const handleTableChange = (pagination, filters, sorter) => {
     fetchPayments(pagination.current, pagination.pageSize);

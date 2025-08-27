@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Row, Col, Table, Typography, Button, DatePicker,
@@ -48,57 +48,57 @@ export default function ComplaintsPage() {
     hasMore: false
   });
 
-  const fetchComplaints = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      const params = {
-        from: dateRange[0].toISOString(),
-        to: dateRange[1].toISOString(),
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        search: searchText || undefined,
-        page,
-        limit: pageSize
-      };
+ const fetchComplaints = useCallback(async (page = 1, pageSize = 10) => {
+  try {
+    setLoading(true);
+    const params = {
+      from: dateRange[0].toISOString(),
+      to: dateRange[1].toISOString(),
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      search: searchText || undefined,
+      page,
+      limit: pageSize
+    };
 
-      const res = await api.get("/api/admin/getComplaints", 
-        { 
-            params: {
-                ...params
-            }
-        }
-      );
+    const res = await api.get("/api/admin/getComplaints", 
+      { 
+          params: {
+              ...params
+          }
+      }
+    );
 
-      const { complaints: complaintData, totalCount } = res.data.data.data;
-      setComplaints(complaintData);
-      
-      // Update pagination
-      setPagination({
-        current: page,
-        pageSize: pageSize,
-        total: totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-        hasMore: page * pageSize < totalCount
-      });
-      
-      // Calculate stats
-      const resolved = complaintData.filter(c => c.isResolved).length;
-      const pending = totalCount - resolved;
-      const recent = complaintData.filter(c => 
-        dayjs(c.createdAt).isAfter(dayjs().subtract(7, 'days'))
-      ).length;
-      
-      setStats({ total: totalCount, resolved, pending, recent });
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load complaints");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { complaints: complaintData, totalCount } = res.data.data.data;
+    setComplaints(complaintData);
+    
+    // Update pagination
+    setPagination({
+      current: page,
+      pageSize: pageSize,
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / pageSize),
+      hasMore: page * pageSize < totalCount
+    });
+    
+    // Calculate stats
+    const resolved = complaintData.filter(c => c.isResolved).length;
+    const pending = totalCount - resolved;
+    const recent = complaintData.filter(c => 
+      dayjs(c.createdAt).isAfter(dayjs().subtract(7, 'days'))
+    ).length;
+    
+    setStats({ total: totalCount, resolved, pending, recent });
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load complaints");
+  } finally {
+    setLoading(false);
+  }
+}, [dateRange, statusFilter, searchText]); // Add dependencies
 
-  useEffect(() => {
-    fetchComplaints(pagination.current, pagination.pageSize);
-  }, [dateRange, statusFilter]);
+useEffect(() => {
+  fetchComplaints(1, pagination.pageSize); // Reset to page 1 when filters change
+}, [fetchComplaints, pagination.pageSize]); // Add fetchComplaints as dependency
 
   const handleTableChange = (pagination) => {
     fetchComplaints(pagination.current, pagination.pageSize);

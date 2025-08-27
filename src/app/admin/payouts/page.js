@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, DatePicker,
@@ -59,7 +59,7 @@ export default function PayoutsPage() {
   const [customAmount, setCustomAmount] = useState(0);
   const [useCustomAmount, setUseCustomAmount] = useState(false);
 
-  const fetchPayouts = async (page = 1, pageSize = 10) => {
+  const fetchPayouts = useCallback(async (page = 1, pageSize = 10) => {
     try {
       setLoading(true);
       
@@ -113,11 +113,11 @@ export default function PayoutsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]); // Add filters as dependency
 
   useEffect(() => {
     fetchPayouts();
-  }, []);
+  }, [fetchPayouts]);
 
   const handleTableChange = (newPagination, filters, sorter) => {
     fetchPayouts(newPagination.current, newPagination.pageSize);
@@ -371,11 +371,11 @@ export default function PayoutsPage() {
   };
 
 const PayoutActionModal = () => {
-  if (!selectedPayout) return null;
-
-  // Use a ref to track the input element
+  // Move hooks to the top level
   const inputRef = useRef(null);
-  const [localCustomAmount, setLocalCustomAmount] = useState(selectedPayout.expected_amount);
+  const [localCustomAmount, setLocalCustomAmount] = useState(
+    selectedPayout ? selectedPayout.expected_amount : 0
+  );
   const [localUseCustomAmount, setLocalUseCustomAmount] = useState(false);
 
   // Focus the input when custom amount is selected
@@ -386,6 +386,9 @@ const PayoutActionModal = () => {
       }, 100);
     }
   }, [localUseCustomAmount]);
+
+  // Now check for selectedPayout at the end, after all hooks
+  if (!selectedPayout) return null;
 
   const handleProcess = () => {
     handleProcessPayout(

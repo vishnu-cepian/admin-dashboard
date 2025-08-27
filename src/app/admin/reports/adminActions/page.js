@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, Select, DatePicker,
@@ -33,7 +33,8 @@ export default function AdminActionsPage() {
   const [selectedAction, setSelectedAction] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const fetchAdminActions = async (page = 1, pageSize = 10) => {
+  // Wrap fetchAdminActions in useCallback
+  const fetchAdminActions = useCallback(async (page = 1, pageSize = 10) => {
     try {
       setLoading(true);
       const res = await api.get("/api/admin/getAdminActions", {
@@ -59,11 +60,11 @@ export default function AdminActionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]); // Add filters as dependency
 
   useEffect(() => {
     fetchAdminActions();
-  }, [filters]);
+  }, [fetchAdminActions]);
 
   const handleTableChange = (pagination, filters, sorter) => {
     fetchAdminActions(pagination.current, pagination.pageSize);

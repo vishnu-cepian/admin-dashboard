@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, DatePicker,
@@ -43,54 +43,51 @@ export default function QueueLogsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [queueNames, setQueueNames] = useState([]);
 
-  const fetchQueueLogs = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      
-      const params = {
-        page,
-        limit: pageSize,
-        queueName: filters.queueName || undefined
-      };
-      
-      // Add date range if provided
-      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-        params.from = filters.dateRange[0].toISOString();
-        params.to = filters.dateRange[1].toISOString();
-      }
-      
-      const res = await api.get("/api/admin/getQueueLogs", { params });
-      
-      setQueueLogs(res.data.data.queueLogs);
-      setPagination(prev => ({
-        ...prev,
-        current: res.data.data.pagination.currentPage,
-        pageSize: res.data.data.pagination.itemsPerPage,
-        total: res.data.data.pagination.totalItems
-      }));
-      
-      // Set statistics
-      setStats({
-        totalCount: res.data.data.totalCount || 0,
-        filteredCount: res.data.data.filteredCount || 0
-      });
-
-      // Extract unique queue names for filter dropdown
-    //   if (res.data.data.queueLogs && res.data.data.queueLogs.length > 0) {
-    //     const uniqueQueueNames = [...new Set(res.data.data.queueLogs.map(log => log.queueName))];
-        setQueueNames(['emailQueue', 'pushQueue', 'phoneQueue']);
-    //   }
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load queue logs");
-    } finally {
-      setLoading(false);
+  const fetchQueueLogs = useCallback(async (page = 1, pageSize = 10) => {
+  try {
+    setLoading(true);
+    
+    const params = {
+      page,
+      limit: pageSize,
+      queueName: filters.queueName || undefined
+    };
+    
+    // Add date range if provided
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+      params.from = filters.dateRange[0].toISOString();
+      params.to = filters.dateRange[1].toISOString();
     }
-  };
+    
+    const res = await api.get("/api/admin/getQueueLogs", { params });
+    
+    setQueueLogs(res.data.data.queueLogs);
+    setPagination(prev => ({
+      ...prev,
+      current: res.data.data.pagination.currentPage,
+      pageSize: res.data.data.pagination.itemsPerPage,
+      total: res.data.data.pagination.totalItems
+    }));
+    
+    // Set statistics
+    setStats({
+      totalCount: res.data.data.totalCount || 0,
+      filteredCount: res.data.data.filteredCount || 0
+    });
 
-  useEffect(() => {
-    fetchQueueLogs();
-  }, []);
+    // Extract unique queue names for filter dropdown
+    setQueueNames(['emailQueue', 'pushQueue', 'phoneQueue']);
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load queue logs");
+  } finally {
+    setLoading(false);
+  }
+}, [filters]); // Add filters as dependency
+
+useEffect(() => {
+  fetchQueueLogs();
+}, [fetchQueueLogs]); // Add fetchQueueLogs as dependency
 
   const handleTableChange = (newPagination, filters, sorter) => {
     fetchQueueLogs(newPagination.current, newPagination.pageSize);

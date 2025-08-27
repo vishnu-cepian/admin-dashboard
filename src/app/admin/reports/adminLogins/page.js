@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card, Row, Col, Table, Typography, Button, 
    Space, Tag, Avatar, message, Tooltip,
@@ -39,12 +39,15 @@ export default function AdminLoginHistoryPage() {
     hasMore: false
   });
 
-  const fetchLoginHistory = async (page = 1, pageSize = 10) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const fetchLoginHistory = useCallback(async (page = currentPage, size = pageSize) => {
     try {
       setLoading(true);
       const params = {
         page,
-        limit: pageSize
+        limit: size
       };
 
       const res = await api.get("/api/admin/loginHistory", { params });
@@ -55,10 +58,10 @@ export default function AdminLoginHistoryPage() {
       // Update pagination
       setPagination({
         current: page,
-        pageSize: pageSize,
+        pageSize: size,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-        hasMore: page * pageSize < totalCount
+        totalPages: Math.ceil(totalCount / size),
+        hasMore: page * size < totalCount
       });
       
       // Calculate stats
@@ -74,11 +77,11 @@ export default function AdminLoginHistoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize]); // Add currentPage and pageSize as dependencies
 
   useEffect(() => {
-    fetchLoginHistory(pagination.current, pagination.pageSize);
-  }, []);
+    fetchLoginHistory(currentPage, pageSize);
+  }, [fetchLoginHistory, currentPage, pageSize]); // Use the separate state variables
 
   const handleTableChange = (pagination) => {
     fetchLoginHistory(pagination.current, pagination.pageSize);

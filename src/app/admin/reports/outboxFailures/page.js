@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, DatePicker,
@@ -43,55 +43,52 @@ export default function OutboxFailuresPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [eventTypes, setEventTypes] = useState([]);
 
-  const fetchOutboxFailures = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      
-      const params = {
-        page,
-        limit: pageSize,
-        status: 'FAILED', // Only show FAILED status
-        eventType: filters.eventType || undefined
-      };
-      
-      // Add date range if provided
-      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-        params.from = filters.dateRange[0].toISOString();
-        params.to = filters.dateRange[1].toISOString();
-      }
-      
-      const res = await api.get("/api/admin/getOutboxFailures", { params });
-      
-      setOutboxFailures(res.data.data.outboxFailures);
-      setPagination(prev => ({
-        ...prev,
-        current: res.data.data.pagination.currentPage,
-        pageSize: res.data.data.pagination.itemsPerPage,
-        total: res.data.data.pagination.totalItems
-      }));
-      
-      // Set statistics
-      setStats({
-        totalCount: res.data.data.totalCount || 0,
-        filteredCount: res.data.data.filteredCount || 0
-      });
-
-      // Extract unique event types for filter dropdown
-    //   if (res.data.data.outboxFailures && res.data.data.outboxFailures.length > 0) {
-    //     const uniqueEventTypes = [...new Set(res.data.data.outboxFailures.map(item => item.eventType))];
-        setEventTypes(['INITIATE_PICKUP', 'SEND_ITEM_DELIVERY']);
-    //   }
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load outbox failures");
-    } finally {
-      setLoading(false);
+  const fetchOutboxFailures = useCallback(async (page = 1, pageSize = 10) => {
+  try {
+    setLoading(true);
+    
+    const params = {
+      page,
+      limit: pageSize,
+      status: 'FAILED', // Only show FAILED status
+      eventType: filters.eventType || undefined
+    };
+    
+    // Add date range if provided
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+      params.from = filters.dateRange[0].toISOString();
+      params.to = filters.dateRange[1].toISOString();
     }
-  };
+    
+    const res = await api.get("/api/admin/getOutboxFailures", { params });
+    
+    setOutboxFailures(res.data.data.outboxFailures);
+    setPagination(prev => ({
+      ...prev,
+      current: res.data.data.pagination.currentPage,
+      pageSize: res.data.data.pagination.itemsPerPage,
+      total: res.data.data.pagination.totalItems
+    }));
+    
+    // Set statistics
+    setStats({
+      totalCount: res.data.data.totalCount || 0,
+      filteredCount: res.data.data.filteredCount || 0
+    });
 
-  useEffect(() => {
-    fetchOutboxFailures();
-  }, []);
+    // Extract unique event types for filter dropdown
+    setEventTypes(['INITIATE_PICKUP', 'SEND_ITEM_DELIVERY']);
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load outbox failures");
+  } finally {
+    setLoading(false);
+  }
+}, [filters]); // Add filters as dependency
+
+useEffect(() => {
+  fetchOutboxFailures();
+}, [fetchOutboxFailures]); // Add fetchOutboxFailures as dependency
 
   const handleTableChange = (newPagination, filters, sorter) => {
     fetchOutboxFailures(newPagination.current, newPagination.pageSize);

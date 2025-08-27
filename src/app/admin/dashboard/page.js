@@ -35,6 +35,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const handleLogout = useCallback(async () => {
+    await api.patch("/api/admin/logout").catch((err) => {
+      console.error("Error logging out:", err);
+    });
+    removeTokens();
+    router.push("/admin/login");
+  }, [router]);
+
   // Wrap fetchStats in useCallback to prevent unnecessary recreations
   const fetchStats = useCallback(async () => {
     try {
@@ -68,15 +76,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  const handleLogout = async () => {
-    await api.patch("/api/admin/logout").catch((err) => {
-      console.error("Error logging out:", err);
-    });
-    removeTokens();
-    router.push("/admin/login");
-  };
+  }, [handleLogout]);
 
   const manageVendors = () => {
     router.push("/admin/vendors")

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card, Table, Tag, Space, Button, Typography, DatePicker,
@@ -42,50 +42,50 @@ export default function PaymentFailuresPage() {
   const [selectedPaymentFailure, setSelectedPaymentFailure] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const fetchPaymentFailures = async (page = 1, pageSize = 10) => {
-    try {
-      setLoading(true);
-      
-      const params = {
-        page,
-        limit: pageSize,
-        paymentId: filters.paymentId || undefined,
-        orderId: filters.orderId || undefined
-      };
-      
-      // Add date range if provided
-      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-        params.from = filters.dateRange[0].toISOString();
-        params.to = filters.dateRange[1].toISOString();
-      }
-      
-      const res = await api.get("/api/admin/getPaymentFailuresList", { params });
-      
-      setPaymentFailures(res.data.data.paymentFailures);
-      setPagination({
-        current: res.data.data.pagination.currentPage,
-        pageSize: res.data.data.pagination.itemsPerPage,
-        total: res.data.data.pagination.totalItems
-      });
-      
-      // Set statistics
-      setStats({
-        totalCount: res.data.data.totalCount || 0,
-        totalAmount: res.data.data.totalAmount || 0,
-        filteredCount: res.data.data.filteredCount || 0,
-        filteredAmount: res.data.data.filteredAmount || 0
-      });
-    } catch (err) {
-      console.error(err);
-      message.error("Failed to load payment failures");
-    } finally {
-      setLoading(false);
+  const fetchPaymentFailures = useCallback(async (page = 1, pageSize = 10) => {
+  try {
+    setLoading(true);
+    
+    const params = {
+      page,
+      limit: pageSize,
+      paymentId: filters.paymentId || undefined,
+      orderId: filters.orderId || undefined
+    };
+    
+    // Add date range if provided
+    if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
+      params.from = filters.dateRange[0].toISOString();
+      params.to = filters.dateRange[1].toISOString();
     }
-  };
+    
+    const res = await api.get("/api/admin/getPaymentFailuresList", { params });
+    
+    setPaymentFailures(res.data.data.paymentFailures);
+    setPagination({
+      current: res.data.data.pagination.currentPage,
+      pageSize: res.data.data.pagination.itemsPerPage,
+      total: res.data.data.pagination.totalItems
+    });
+    
+    // Set statistics
+    setStats({
+      totalCount: res.data.data.totalCount || 0,
+      totalAmount: res.data.data.totalAmount || 0,
+      filteredCount: res.data.data.filteredCount || 0,
+      filteredAmount: res.data.data.filteredAmount || 0
+    });
+  } catch (err) {
+    console.error(err);
+    message.error("Failed to load payment failures");
+  } finally {
+    setLoading(false);
+  }
+}, [filters]); // Add filters as dependency
 
-  useEffect(() => {
-    fetchPaymentFailures();
-  }, []);
+useEffect(() => {
+  fetchPaymentFailures();
+}, [fetchPaymentFailures]); // Add fetchPaymentFailures as dependency
 
   const handleTableChange = (pagination, filters, sorter) => {
     fetchPaymentFailures(pagination.current, pagination.pageSize);
