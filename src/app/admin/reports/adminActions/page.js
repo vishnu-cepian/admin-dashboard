@@ -306,6 +306,7 @@ export default function AdminActionsPage() {
                 <Option value="blockOrUnblockCustomer">block or unblock customer</Option>
                 <Option value="resolveComplaint">Resolve Complaint</Option>
                 <Option value="updateSettings">Update Settings</Option>
+                <Option value="payout_initiated">Payout Initiated</Option>
               </Select>
             </Space>
             

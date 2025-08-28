@@ -51,9 +51,11 @@ export default function PayoutsPage() {
     retryCount: 'all',
     utr: '',
     payoutId: '',
-    dateRange: null
+    dateRange: null,
+    mode: 'all' // Add mode filter
   });
-   const [appliedFilters, setAppliedFilters] = useState({
+
+  const [appliedFilters, setAppliedFilters] = useState({
     id: '',
     orderId: '',
     vendorId: '',
@@ -61,7 +63,8 @@ export default function PayoutsPage() {
     retryCount: 'all',
     utr: '',
     payoutId: '',
-    dateRange: null
+    dateRange: null,
+    mode: 'all' // Add mode filter
   });
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -81,7 +84,8 @@ export default function PayoutsPage() {
         vendorId: filterParams.vendorId || undefined,
         status: filterParams.status !== 'all' ? filterParams.status : undefined,
         utr: filterParams.utr || undefined,
-        payoutId: filterParams.payoutId || undefined
+        payoutId: filterParams.payoutId || undefined,
+        mode: filterParams.mode !== 'all' ? filterParams.mode : undefined // Add mode param
       };
       
       // Add retry count filter
@@ -151,45 +155,45 @@ export default function PayoutsPage() {
       retryCount: 'all',
       utr: '',
       payoutId: '',
-      dateRange: null
+      dateRange: null,
+      mode: 'all' // Add mode reset
     };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
     fetchPayouts(1, pagination.pageSize, emptyFilters);
   };
 
-  const handleProcessPayout = async (idempotencyKey, amount = null) => {
-    try {
-      setProcessing(true);
-      const payload = {
-        idempotencyKey,
-        amount: amount || selectedPayout.expected_amount
-      };
-      
-      const res = await api.post("/api/admin/processPayout", payload);
-      
-      if (res.data.success) {
-        message.success("Payout processed successfully");
-        setPayoutModalVisible(false);
-        // Soft reload to get updated status
-        fetchPayouts(pagination.current, pagination.pageSize);
-      } else {
-        message.error(res.data.message || "Failed to process payout");
-      }
-    } catch (err) {
-      console.error(err);
-      message.error(err.response?.data?.message || "Failed to process payout");
-    } finally {
-      setProcessing(false);
+  const handleProcessPayout = async (idempotencyKey, amount = null, mode = 'IMPS') => {
+  try {
+    setProcessing(true);
+    const payload = {
+      idempotencyKey,
+      amount: amount || selectedPayout.expected_amount,
+      mode // Add mode to payload
+    };
+    
+    const res = await api.post("/api/admin/processPayout", payload);
+    if (res.data.message === "Success") {
+      message.success(`Payout processed successfully via ${mode}`);
+      setPayoutModalVisible(false);
+      fetchPayouts(pagination.current, pagination.pageSize);
+    } else {
+      message.error(res.data.message || "Failed to process payout");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    message.error(err.response?.data?.message || "Failed to process payout");
+  } finally {
+    setProcessing(false);
+  }
+};
 
   const handleRetryPayout = async (idempotencyKey) => {
     try {
       setProcessing(true);
       const res = await api.post("/api/admin/retryPayout", { idempotencyKey });
       
-      if (res.data.success) {
+      if (res.data.message === "Success") {
         message.success("Payout retry initiated");
         // Soft reload to get updated status
         fetchPayouts(pagination.current, pagination.pageSize);
@@ -207,6 +211,8 @@ export default function PayoutsPage() {
   const getStatusTag = (status) => {
     const statusConfig = {
       'action_required': { color: 'orange', text: 'Action Required', icon: <SettingOutlined /> },
+      'pending': { color: 'yellow', text: 'Pending', icon: <ClockCircleOutlined /> },
+      'rejected': { color: 'red', text: 'Rejected', icon: <WarningOutlined /> },
       'queued': { color: 'purple', text: 'Queued', icon: <RetweetOutlined /> },
       'processing': { color: 'blue', text: 'Processing', icon: <RocketOutlined /> },
       'processed': { color: 'green', text: 'Processed', icon: <DollarOutlined /> },
@@ -330,6 +336,9 @@ export default function PayoutsPage() {
             <Descriptions.Item label="UTR">
               {selectedPayout.utr ? <Text copyable>{selectedPayout.utr}</Text> : 'N/A'}
             </Descriptions.Item>
+            <Descriptions.Item label="Mode">
+              {selectedPayout.mode ? <Text>{selectedPayout.mode}</Text> : 'N/A'}
+            </Descriptions.Item>
             <Descriptions.Item label="Retry Count">
               <Tag color={selectedPayout.retry_count > 0 ? 'orange' : 'blue'}>
                 {selectedPayout.retry_count}
@@ -343,11 +352,11 @@ export default function PayoutsPage() {
             </Descriptions.Item>
             
             {/* New fields added here */}
-            <Descriptions.Item label="Payout Created At">
-              {selectedPayout.payout_created_at ? (
+            <Descriptions.Item label="Payout Initiated by Admin At">
+              {selectedPayout.payout_initiated_by_admin_at ? (
                 <Space>
                   <CalendarOutlined />
-                  <Text>{dayjs(selectedPayout.payout_created_at).format('MMMM D, YYYY h:mm:ss A')}</Text>
+                  <Text>{dayjs(selectedPayout.payout_initiated_by_admin_at).format('MMMM D, YYYY h:mm:ss A')}</Text>
                 </Space>
               ) : 'N/A'}
             </Descriptions.Item>
@@ -371,7 +380,11 @@ export default function PayoutsPage() {
                 renderJsonData(selectedPayout.payout_status_history, "View Status History")
               ) : 'N/A'}
             </Descriptions.Item>
-            
+            <Descriptions.Item label="Payout Status History">
+              {selectedPayout.payout_status_description ? (
+                renderJsonData(selectedPayout.payout_status_description, "View Status Description")
+              ) : 'N/A'}
+            </Descriptions.Item>
             <Descriptions.Item label="Retry Details">
               {selectedPayout.retry_details ? (
                 renderJsonData(selectedPayout.retry_details, "View Retry Details")
@@ -384,14 +397,13 @@ export default function PayoutsPage() {
   };
 
 const PayoutActionModal = () => {
-  // Move hooks to the top level
   const inputRef = useRef(null);
   const [localCustomAmount, setLocalCustomAmount] = useState(
     selectedPayout ? selectedPayout.expected_amount : 0
   );
   const [localUseCustomAmount, setLocalUseCustomAmount] = useState(false);
+  const [selectedMode, setSelectedMode] = useState('IMPS'); // Default to IMPS
 
-  // Focus the input when custom amount is selected
   useEffect(() => {
     if (localUseCustomAmount && inputRef.current) {
       setTimeout(() => {
@@ -400,13 +412,13 @@ const PayoutActionModal = () => {
     }
   }, [localUseCustomAmount]);
 
-  // Now check for selectedPayout at the end, after all hooks
   if (!selectedPayout) return null;
 
   const handleProcess = () => {
     handleProcessPayout(
       selectedPayout.id, 
-      localUseCustomAmount ? localCustomAmount : null
+      localUseCustomAmount ? localCustomAmount : null,
+      selectedMode // Pass the selected mode
     );
   };
 
@@ -423,10 +435,12 @@ const PayoutActionModal = () => {
         setPayoutModalVisible(false);
         setLocalUseCustomAmount(false);
         setLocalCustomAmount(selectedPayout.expected_amount);
+        setSelectedMode('IMPS'); // Reset mode on cancel
       }}
       afterClose={() => {
         setLocalUseCustomAmount(false);
         setLocalCustomAmount(selectedPayout.expected_amount);
+        setSelectedMode('IMPS'); // Reset mode after close
       }}
       footer={[
         <Button key="cancel" onClick={() => setPayoutModalVisible(false)}>
@@ -452,16 +466,34 @@ const PayoutActionModal = () => {
         className="mb-4"
       />
         
-        <div className="mb-4">
-          <Text strong>Payout Details:</Text>
-          <div className="mt-2 space-y-1">
-            <div>Idempotency Key: <Text copyable>{selectedPayout.id}</Text></div>
-            <div>Vendor Fund Account: <Text copyable>{selectedPayout.razorpay_fund_account_id}</Text></div>
-            <div>Expected Amount: <Text strong>{formatCurrency(selectedPayout.expected_amount)}</Text></div>
-          </div>
+      <div className="mb-4">
+        <Text strong>Payout Details:</Text>
+        <div className="mt-2 space-y-1">
+          <div>Idempotency Key: <Text copyable>{selectedPayout.id}</Text></div>
+          <div>Vendor Fund Account: <Text copyable>{selectedPayout.razorpay_fund_account_id}</Text></div>
+          <div>Expected Amount: <Text strong>{formatCurrency(selectedPayout.expected_amount)}</Text></div>
         </div>
+      </div>
 
-        <div className="mb-4">
+      {/* Add Mode Selection */}
+      <div className="mb-4">
+        <Text strong>Payout Mode:</Text>
+        <Select
+          value={selectedMode}
+          onChange={setSelectedMode}
+          className="w-full mt-2"
+        >
+          <Option value="IMPS">IMPS (Instant)</Option>
+          <Option value="NEFT">NEFT (Next Day)</Option>
+        </Select>
+        <Text type="secondary" className="text-xs">
+          {selectedMode === 'IMPS' 
+            ? 'Instant transfer, processed within minutes' 
+            : 'Next day transfer, processed by next business day'}
+        </Text>
+      </div>
+
+      <div className="mb-4">
         <Text strong>Payout Options:</Text>
         <div className="mt-2 space-y-2">
           <div>
@@ -605,6 +637,17 @@ const PayoutActionModal = () => {
         <Text className="text-xs">
           {dayjs(date).format('MMM D, YYYY, h:mm A')}
         </Text>
+      )
+    },
+    {
+      title: 'Mode',
+      dataIndex: 'mode',
+      key: 'mode',
+      width: 80,
+      render: (mode) => (
+        <Tag color={mode === 'IMPS' ? 'blue' : 'green'}>
+          {mode || 'N/A'}
+        </Tag>
       )
     },
     {
@@ -818,6 +861,8 @@ const PayoutActionModal = () => {
               >
                 <Option value="all">All Status</Option>
                 <Option value="action_required">Action Required</Option>
+                <Option value="pending">Pending</Option>
+                <Option value="rejected">Rejected</Option>
                 <Option value="queued">Queued</Option>
                 <Option value="processing">Processing</Option>
                 <Option value="processed">Processed</Option>
@@ -826,6 +871,18 @@ const PayoutActionModal = () => {
                 <Option value="reversed">Reversed</Option>
               </Select>
             </Col>
+            <Col xs={24} sm={12} md={6} lg={4}>
+              <Select
+                value={filters.mode}
+                onChange={(value) => handleFilterChange('mode', value)}
+                className="w-full"
+                placeholder="Payout Mode"
+              >
+                <Option value="all">All Modes</Option>
+                <Option value="IMPS">IMPS</Option>
+                <Option value="NEFT">NEFT</Option>
+              </Select>
+          </Col>
             <Col xs={24} sm={12} md={6} lg={4}>
               <Select
                 value={filters.retryCount}
