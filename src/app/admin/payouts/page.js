@@ -53,36 +53,46 @@ export default function PayoutsPage() {
     payoutId: '',
     dateRange: null
   });
+   const [appliedFilters, setAppliedFilters] = useState({
+    id: '',
+    orderId: '',
+    vendorId: '',
+    status: 'all',
+    retryCount: 'all',
+    utr: '',
+    payoutId: '',
+    dateRange: null
+  });
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [payoutModalVisible, setPayoutModalVisible] = useState(false);
   const [customAmount, setCustomAmount] = useState(0);
   const [useCustomAmount, setUseCustomAmount] = useState(false);
 
-  const fetchPayouts = useCallback(async (page = 1, pageSize = 10) => {
+  const fetchPayouts = useCallback(async (page = 1, pageSize = 10, filterParams = appliedFilters) => {
     try {
       setLoading(true);
       
       const params = {
         page,
         limit: pageSize,
-        id: filters.id || undefined,
-        orderId: filters.orderId || undefined,
-        vendorId: filters.vendorId || undefined,
-        status: filters.status !== 'all' ? filters.status : undefined,
-        utr: filters.utr || undefined,
-        payoutId: filters.payoutId || undefined
+        id: filterParams.id || undefined,
+        orderId: filterParams.orderId || undefined,
+        vendorId: filterParams.vendorId || undefined,
+        status: filterParams.status !== 'all' ? filterParams.status : undefined,
+        utr: filterParams.utr || undefined,
+        payoutId: filterParams.payoutId || undefined
       };
       
       // Add retry count filter
-      if (filters.retryCount !== 'all') {
-        params.retryCount = filters.retryCount === 'has_retries' ? 'gt:0' : '0';
+      if (filterParams.retryCount !== 'all') {
+        params.retryCount = filterParams.retryCount === 'has_retries' ? 'gt:0' : '0';
       }
       
       // Add date range if provided
-      if (filters.dateRange && filters.dateRange[0] && filters.dateRange[1]) {
-        params.from = filters.dateRange[0].toISOString();
-        params.to = filters.dateRange[1].toISOString();
+      if (filterParams.dateRange && filterParams.dateRange[0] && filterParams.dateRange[1]) {
+        params.from = filterParams.dateRange[0].toISOString();
+        params.to = filterParams.dateRange[1].toISOString();
       }
       
       const res = await api.get("/api/admin/getPayoutsList", { params });
@@ -113,14 +123,14 @@ export default function PayoutsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]); // Add filters as dependency
+  }, []); // Removed filters dependency
 
   useEffect(() => {
     fetchPayouts();
   }, [fetchPayouts]);
 
   const handleTableChange = (newPagination, filters, sorter) => {
-    fetchPayouts(newPagination.current, newPagination.pageSize);
+    fetchPayouts(newPagination.current, newPagination.pageSize, appliedFilters);
   };
 
   const handleFilterChange = (key, value) => {
@@ -128,11 +138,12 @@ export default function PayoutsPage() {
   };
 
   const applyFilters = () => {
-    fetchPayouts(1, pagination.pageSize);
+    setAppliedFilters({...filters});
+    fetchPayouts(1, pagination.pageSize, filters);
   };
 
   const resetFilters = () => {
-    setFilters({
+    const emptyFilters = {
       id: '',
       orderId: '',
       vendorId: '',
@@ -141,8 +152,10 @@ export default function PayoutsPage() {
       utr: '',
       payoutId: '',
       dateRange: null
-    });
-    setTimeout(() => fetchPayouts(1, pagination.pageSize), 0);
+    };
+    setFilters(emptyFilters);
+    setAppliedFilters(emptyFilters);
+    fetchPayouts(1, pagination.pageSize, emptyFilters);
   };
 
   const handleProcessPayout = async (idempotencyKey, amount = null) => {

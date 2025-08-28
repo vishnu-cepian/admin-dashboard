@@ -25,13 +25,19 @@ export default function ComplaintsPage() {
   const router = useRouter();
   const [dateRange, setDateRange] = useState([dayjs().subtract(30, 'days'), dayjs()]);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchText, setSearchText] = useState('');
+  
+  // Add state for applied filters
+  const [appliedDateRange, setAppliedDateRange] = useState([dayjs().subtract(30, 'days'), dayjs()]);
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState('all');
+  const [appliedSearchText, setAppliedSearchText] = useState('');
+  
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [complaints, setComplaints] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
-  const [searchText, setSearchText] = useState('');
   const [stats, setStats] = useState({
     total: 0,
     resolved: 0,
@@ -48,60 +54,81 @@ export default function ComplaintsPage() {
     hasMore: false
   });
 
- const fetchComplaints = useCallback(async (page = 1, pageSize = 10) => {
-  try {
-    setLoading(true);
-    const params = {
-      from: dateRange[0].toISOString(),
-      to: dateRange[1].toISOString(),
-      status: statusFilter !== 'all' ? statusFilter : undefined,
-      search: searchText || undefined,
-      page,
-      limit: pageSize
-    };
+  // Remove dependencies from useCallback
+  const fetchComplaints = useCallback(async (page = 1, pageSize = 10) => {
+    try {
+      setLoading(true);
+      const params = {
+        from: appliedDateRange[0].toISOString(),
+        to: appliedDateRange[1].toISOString(),
+        status: appliedStatusFilter !== 'all' ? appliedStatusFilter : undefined,
+        search: appliedSearchText || undefined,
+        page,
+        limit: pageSize
+      };
 
-    const res = await api.get("/api/admin/getComplaints", 
-      { 
-          params: {
-              ...params
-          }
-      }
-    );
+      const res = await api.get("/api/admin/getComplaints", 
+        { 
+            params: {
+                ...params
+            }
+        }
+      );
 
-    const { complaints: complaintData, totalCount } = res.data.data.data;
-    setComplaints(complaintData);
-    
-    // Update pagination
-    setPagination({
-      current: page,
-      pageSize: pageSize,
-      total: totalCount,
-      totalPages: Math.ceil(totalCount / pageSize),
-      hasMore: page * pageSize < totalCount
-    });
-    
-    // Calculate stats
-    const resolved = complaintData.filter(c => c.isResolved).length;
-    const pending = totalCount - resolved;
-    const recent = complaintData.filter(c => 
-      dayjs(c.createdAt).isAfter(dayjs().subtract(7, 'days'))
-    ).length;
-    
-    setStats({ total: totalCount, resolved, pending, recent });
-  } catch (err) {
-    console.error(err);
-    message.error("Failed to load complaints");
-  } finally {
-    setLoading(false);
-  }
-}, [dateRange, statusFilter, searchText]); // Add dependencies
+      const { complaints: complaintData, totalCount } = res.data.data.data;
+      setComplaints(complaintData);
+      
+      // Update pagination
+      setPagination({
+        current: page,
+        pageSize: pageSize,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+        hasMore: page * pageSize < totalCount
+      });
+      
+      // Calculate stats
+      const resolved = complaintData.filter(c => c.isResolved).length;
+      const pending = totalCount - resolved;
+      const recent = complaintData.filter(c => 
+        dayjs(c.createdAt).isAfter(dayjs().subtract(7, 'days'))
+      ).length;
+      
+      setStats({ total: totalCount, resolved, pending, recent });
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to load complaints");
+    } finally {
+      setLoading(false);
+    }
+  }, [appliedDateRange, appliedStatusFilter, appliedSearchText]); // Use applied filters as dependencies
 
-useEffect(() => {
-  fetchComplaints(1, pagination.pageSize); // Reset to page 1 when filters change
-}, [fetchComplaints, pagination.pageSize]); // Add fetchComplaints as dependency
+  useEffect(() => {
+    fetchComplaints(1, pagination.pageSize);
+  }, [fetchComplaints, pagination.pageSize]);
 
   const handleTableChange = (pagination) => {
     fetchComplaints(pagination.current, pagination.pageSize);
+  };
+
+  const applyFilters = () => {
+    setAppliedDateRange(dateRange);
+    setAppliedStatusFilter(statusFilter);
+    setAppliedSearchText(searchText);
+    fetchComplaints(1, pagination.pageSize);
+  };
+
+  const resetFilters = () => {
+    const defaultDateRange = [dayjs().subtract(30, 'days'), dayjs()];
+    setDateRange(defaultDateRange);
+    setStatusFilter('all');
+    setSearchText('');
+    
+    setAppliedDateRange(defaultDateRange);
+    setAppliedStatusFilter('all');
+    setAppliedSearchText('');
+    
+    fetchComplaints(1, pagination.pageSize);
   };
 
   const handleResolveComplaint = async (id, resolutionNotes) => {
@@ -123,9 +150,10 @@ useEffect(() => {
     try {
       setExportLoading(true);
       const params = {
-        from: dateRange[0].toISOString(),
-        to: dateRange[1].toISOString(),
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        from: appliedDateRange[0].toISOString(),
+        to: appliedDateRange[1].toISOString(),
+        status: appliedStatusFilter !== 'all' ? appliedStatusFilter : undefined,
+        search: appliedSearchText || undefined,
         export: true
       };
 
@@ -434,16 +462,20 @@ useEffect(() => {
                 prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                onPressEnter={() => fetchComplaints(1, pagination.pageSize)}
                 size="large"
                 className="w-full lg:w-64"
               />
             </Space>
             
-            <div className="ml-auto">
+            <div className="ml-auto flex gap-2">
+              <Button 
+                onClick={resetFilters}
+              >
+                Reset
+              </Button>
               <Button 
                 type="primary" 
-                onClick={() => fetchComplaints(1, pagination.pageSize)}
+                onClick={applyFilters}
                 loading={loading}
               >
                 Apply Filters
