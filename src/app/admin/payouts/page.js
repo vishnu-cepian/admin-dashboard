@@ -10,7 +10,7 @@ import {
 import {
   EyeOutlined, FilterOutlined, ReloadOutlined,
   ClockCircleOutlined, DollarOutlined, RocketOutlined,
-  RetweetOutlined, SearchOutlined,
+  RetweetOutlined, SearchOutlined, CloseOutlined,
   UserOutlined, ShoppingOutlined, SettingOutlined, WarningOutlined, CalendarOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -20,11 +20,13 @@ const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 const { Panel } = Collapse;
+const { TextArea } = Input;
 
 export default function PayoutsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [payouts, setPayouts] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
@@ -52,7 +54,7 @@ export default function PayoutsPage() {
     utr: '',
     payoutId: '',
     dateRange: null,
-    mode: 'all' // Add mode filter
+    mode: 'all'
   });
 
   const [appliedFilters, setAppliedFilters] = useState({
@@ -64,13 +66,15 @@ export default function PayoutsPage() {
     utr: '',
     payoutId: '',
     dateRange: null,
-    mode: 'all' // Add mode filter
+    mode: 'all'
   });
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [payoutModalVisible, setPayoutModalVisible] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [customAmount, setCustomAmount] = useState(0);
   const [useCustomAmount, setUseCustomAmount] = useState(false);
+  const [cancelNotes, setCancelNotes] = useState('');
 
   const fetchPayouts = useCallback(async (page = 1, pageSize = 10, filterParams = appliedFilters) => {
     try {
@@ -85,15 +89,13 @@ export default function PayoutsPage() {
         status: filterParams.status !== 'all' ? filterParams.status : undefined,
         utr: filterParams.utr || undefined,
         payoutId: filterParams.payoutId || undefined,
-        mode: filterParams.mode !== 'all' ? filterParams.mode : undefined // Add mode param
+        mode: filterParams.mode !== 'all' ? filterParams.mode : undefined
       };
       
-      // Add retry count filter
       if (filterParams.retryCount !== 'all') {
         params.retryCount = filterParams.retryCount === 'has_retries' ? 'gt:0' : '0';
       }
       
-      // Add date range if provided
       if (filterParams.dateRange && filterParams.dateRange[0] && filterParams.dateRange[1]) {
         params.from = filterParams.dateRange[0].toISOString();
         params.to = filterParams.dateRange[1].toISOString();
@@ -109,14 +111,11 @@ export default function PayoutsPage() {
         total: res.data.data.pagination.totalItems
       }));
       
-      // Set statistics
       setStats({
         processedPayoutAmount: res.data.data.processedPayoutAmount || 0,
         processedPayoutCount: res.data.data.processedPayoutCount || 0,
-
         pendingPayoutAmount: res.data.data.pendingPayoutAmount || 0,
         pendingPayoutCount: res.data.data.pendingPayoutCount || 0,
-
         filteredExpectedAmount: res.data.data.filteredExpectedAmount || 0,
         filteredActualPaidAmount: res.data.data.filteredActualPaidAmount || 0,
         filteredCount: res.data.data.filteredCount || 0
@@ -127,7 +126,7 @@ export default function PayoutsPage() {
     } finally {
       setLoading(false);
     }
-  }, []); // Removed filters dependency
+  }, []);
 
   useEffect(() => {
     fetchPayouts();
@@ -156,7 +155,7 @@ export default function PayoutsPage() {
       utr: '',
       payoutId: '',
       dateRange: null,
-      mode: 'all' // Add mode reset
+      mode: 'all'
     };
     setFilters(emptyFilters);
     setAppliedFilters(emptyFilters);
@@ -164,29 +163,29 @@ export default function PayoutsPage() {
   };
 
   const handleProcessPayout = async (idempotencyKey, amount = null, mode = 'IMPS') => {
-  try {
-    setProcessing(true);
-    const payload = {
-      idempotencyKey,
-      amount: amount || selectedPayout.expected_amount,
-      mode // Add mode to payload
-    };
-    
-    const res = await api.post("/api/admin/processPayout", payload);
-    if (res.data.message === "Success") {
-      message.success(`Payout processed successfully via ${mode}`);
-      setPayoutModalVisible(false);
-      fetchPayouts(pagination.current, pagination.pageSize);
-    } else {
-      message.error(res.data.message || "Failed to process payout");
+    try {
+      setProcessing(true);
+      const payload = {
+        idempotencyKey,
+        amount: amount || selectedPayout.expected_amount,
+        mode
+      };
+      
+      const res = await api.post("/api/admin/processPayout", payload);
+      if (res.data.message === "Success") {
+        message.success(`Payout processed successfully via ${mode}`);
+        setPayoutModalVisible(false);
+        fetchPayouts(pagination.current, pagination.pageSize);
+      } else {
+        message.error(res.data.message || "Failed to process payout");
+      }
+    } catch (err) {
+      console.error(err);
+      message.error(err.response?.data?.message || "Failed to process payout");
+    } finally {
+      setProcessing(false);
     }
-  } catch (err) {
-    console.error(err);
-    message.error(err.response?.data?.message || "Failed to process payout");
-  } finally {
-    setProcessing(false);
-  }
-};
+  };
 
   const handleRetryPayout = async (idempotencyKey) => {
     try {
@@ -195,7 +194,6 @@ export default function PayoutsPage() {
       
       if (res.data.message === "Success") {
         message.success("Payout retry initiated");
-        // Soft reload to get updated status
         fetchPayouts(pagination.current, pagination.pageSize);
       } else {
         message.error(res.data.message || "Failed to retry payout");
@@ -205,6 +203,30 @@ export default function PayoutsPage() {
       message.error(err.response?.data?.message || "Failed to retry payout");
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleCancelPayout = async (idempotencyKey, notes) => {
+    try {
+      setCancelling(true);
+      const res = await api.post("/api/admin/cancelPayout", {
+        idempotencyKey,
+        notes: notes || undefined
+      });
+      
+      if (res.data.message === "Success") {
+        message.success("Payout cancelled successfully");
+        setCancelModalVisible(false);
+        setCancelNotes('');
+        fetchPayouts(pagination.current, pagination.pageSize);
+      } else {
+        message.error(res.data.message || "Failed to cancel payout");
+      }
+    } catch (err) {
+      console.error(err);
+      message.error(err.response?.data?.message || "Failed to cancel payout");
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -246,6 +268,12 @@ export default function PayoutsPage() {
     setCustomAmount(record.expected_amount);
     setUseCustomAmount(false);
     setPayoutModalVisible(true);
+  };
+
+  const handleInitiateCancel = (record) => {
+    setSelectedPayout(record);
+    setCancelNotes('');
+    setCancelModalVisible(true);
   };
 
   const renderJsonData = (data, title) => {
@@ -351,7 +379,6 @@ export default function PayoutsPage() {
               </Space>
             </Descriptions.Item>
             
-            {/* New fields added here */}
             <Descriptions.Item label="Payout Initiated by Admin At">
               {selectedPayout.payout_initiated_by_admin_at ? (
                 <Space>
@@ -396,29 +423,30 @@ export default function PayoutsPage() {
     );
   };
 
-const PayoutActionModal = () => {
-  const inputRef = useRef(null);
+  const PayoutActionModal = () => {
   const [localCustomAmount, setLocalCustomAmount] = useState(
     selectedPayout ? selectedPayout.expected_amount : 0
   );
   const [localUseCustomAmount, setLocalUseCustomAmount] = useState(false);
-  const [selectedMode, setSelectedMode] = useState('IMPS'); // Default to IMPS
+  const [selectedMode, setSelectedMode] = useState('IMPS');
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    if (localUseCustomAmount && inputRef.current) {
+    if (payoutModalVisible && localUseCustomAmount && inputRef.current) {
       setTimeout(() => {
         inputRef.current.focus();
       }, 100);
     }
-  }, [localUseCustomAmount]);
+  }, [payoutModalVisible, localUseCustomAmount]);
 
-  if (!selectedPayout) return null;
+  // Only render if modal is visible and we have a selected payout
+  if (!payoutModalVisible || !selectedPayout) return null;
 
   const handleProcess = () => {
     handleProcessPayout(
       selectedPayout.id, 
       localUseCustomAmount ? localCustomAmount : null,
-      selectedMode // Pass the selected mode
+      selectedMode
     );
   };
 
@@ -433,14 +461,6 @@ const PayoutActionModal = () => {
       open={payoutModalVisible}
       onCancel={() => {
         setPayoutModalVisible(false);
-        setLocalUseCustomAmount(false);
-        setLocalCustomAmount(selectedPayout.expected_amount);
-        setSelectedMode('IMPS'); // Reset mode on cancel
-      }}
-      afterClose={() => {
-        setLocalUseCustomAmount(false);
-        setLocalCustomAmount(selectedPayout.expected_amount);
-        setSelectedMode('IMPS'); // Reset mode after close
       }}
       footer={[
         <Button key="cancel" onClick={() => setPayoutModalVisible(false)}>
@@ -456,7 +476,7 @@ const PayoutActionModal = () => {
         </Button>
       ]}
       width={500}
-      destroyOnClose={false}
+      destroyOnClose
     >
       <Alert
         message="Important"
@@ -475,7 +495,6 @@ const PayoutActionModal = () => {
         </div>
       </div>
 
-      {/* Add Mode Selection */}
       <div className="mb-4">
         <Text strong>Payout Mode:</Text>
         <Select
@@ -551,6 +570,69 @@ const PayoutActionModal = () => {
     </Modal>
   );
 };
+
+  const CancelPayoutModal = () => {
+    if (!selectedPayout) return null;
+
+    return (
+      <Modal
+        title={
+          <div className="flex items-center">
+            <CloseOutlined className="mr-2 text-red-500" />
+            Cancel Payout
+          </div>
+        }
+        open={cancelModalVisible}
+        onCancel={() => {
+          setCancelModalVisible(false);
+          setCancelNotes('');
+        }}
+        footer={[
+          <Button key="cancel" onClick={() => setCancelModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button 
+            key="confirm" 
+            type="primary" 
+            danger
+            loading={cancelling}
+            onClick={() => handleCancelPayout(selectedPayout.id, cancelNotes)}
+          >
+            Confirm Cancel
+          </Button>
+        ]}
+        width={500}
+      >
+        <Alert
+          message="Warning"
+          description="This action will cancel the payout. This cannot be undone."
+          type="warning"
+          showIcon
+          className="mb-4"
+        />
+          
+        <div className="mb-4">
+          <Text strong>Payout Details:</Text>
+          <div className="mt-2 space-y-1">
+            <div>Idempotency Key: <Text copyable>{selectedPayout.id}</Text></div>
+            <div>Vendor Fund Account: <Text copyable>{selectedPayout.razorpay_fund_account_id}</Text></div>
+            <div>Expected Amount: <Text strong>{formatCurrency(selectedPayout.expected_amount)}</Text></div>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <Text strong>Cancel Reason (Optional):</Text>
+          <TextArea
+            value={cancelNotes}
+            onChange={(e) => setCancelNotes(e.target.value)}
+            placeholder="Enter reason for cancellation..."
+            rows={4}
+            className="mt-2"
+          />
+        </div>
+      </Modal>
+    );
+  };
 
   const columns = [
     {
@@ -682,6 +764,15 @@ const PayoutActionModal = () => {
                 onClick={() => handleRetryPayout(record.id)}
               >
                 Retry
+              </Button>
+              <Button 
+                type="default" 
+                danger
+                size="small" 
+                icon={<CloseOutlined />}
+                onClick={() => handleInitiateCancel(record)}
+              >
+                Cancel
               </Button>
             </>
           )}
@@ -960,6 +1051,9 @@ const PayoutActionModal = () => {
         
         {/* Payout Action Modal */}
         <PayoutActionModal />
+        
+        {/* Cancel Payout Modal */}
+        <CancelPayoutModal />
       </div>
     </div>
   );
