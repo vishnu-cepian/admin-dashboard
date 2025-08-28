@@ -307,6 +307,7 @@ export default function AdminActionsPage() {
                 <Option value="resolveComplaint">Resolve Complaint</Option>
                 <Option value="updateSettings">Update Settings</Option>
                 <Option value="payout_initiated">Payout Initiated</Option>
+                <Option value="payout_retried">Payout Retried</Option>
               </Select>
             </Space>
             
