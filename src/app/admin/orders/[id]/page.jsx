@@ -1,11 +1,47 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import {  Card,  Descriptions,  Tag,  Tabs,  Table,  Button,  Space, Statistic, Timeline,Badge,Alert,Collapse } from 'antd';
-import { StarOutlined, ShopOutlined,CreditCardOutlined,  UserOutlined,  DollarOutlined,  ClockCircleOutlined,  CheckCircleOutlined , CloseCircleOutlined, ShopTwoTone, ClockCircleTwoTone, EnvironmentOutlined} from '@ant-design/icons';
+import { 
+  Card, 
+  Descriptions, 
+  Tag, 
+  Tabs, 
+  Table, 
+  Button, 
+  Space, 
+  Statistic, 
+  Timeline, 
+  Badge, 
+  Alert, 
+  Collapse, 
+  Modal, 
+  Form, 
+  Input, 
+  Select, 
+  InputNumber,
+  message 
+} from 'antd';
+import { 
+  StarOutlined, 
+  ShopOutlined, 
+  CreditCardOutlined, 
+  UserOutlined, 
+  DollarOutlined, 
+  ClockCircleOutlined, 
+  CheckCircleOutlined, 
+  CloseCircleOutlined, 
+  ShopTwoTone, 
+  ClockCircleTwoTone, 
+  EnvironmentOutlined,
+  ExclamationCircleOutlined 
+} from '@ant-design/icons';
 import api from '@/app/lib/api/axios';
 import Divider from 'antd/lib/divider';
+
 const { Panel } = Collapse;
+const { Option } = Select;
+const { TextArea } = Input;
+
 const OrderDetailPage = () => {
   const { id } = useParams();
   const router = useRouter();
@@ -16,6 +52,10 @@ const OrderDetailPage = () => {
   const [allQuotes, setAllQuotes] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refundModalVisible, setRefundModalVisible] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,22 +99,67 @@ const OrderDetailPage = () => {
 
     fetchData();
   }, [id]);
-    // Get the selected vendor's quote
+
+  // Get the selected vendor's quote
   const selectedVendorQuote = allQuotes.find(quote => {
-  const matchingOrderVendor = orderVendors.find(ov => 
-    ov.vendorId === order?.selectedVendorId
-  );
-  return quote.orderVendorId === matchingOrderVendor?.id;
-});
- 
+    const matchingOrderVendor = orderVendors.find(ov => 
+      ov.vendorId === order?.selectedVendorId
+    );
+    return quote.orderVendorId === matchingOrderVendor?.id;
+  });
+  
   // Get other vendors' quotes
   const otherVendorsQuotes = allQuotes.filter(quote => {
     const matchingOrderVendor = orderVendors.find(ov => 
       ov.vendorId === order?.selectedVendorId
     );
     return quote.orderVendorId !== matchingOrderVendor?.id
-  }
-  )
+  });
+
+  const handleRefund = (payment) => {
+    setSelectedPayment(payment);
+    form.setFieldsValue({
+      amount: payment.paymentAmount,
+      speed: 'normal',
+      reason: ''
+    });
+    setRefundModalVisible(true);
+  };
+
+  const handleRefundSubmit = async (values) => {
+    try {
+      setRefundLoading(true);
+      const response = await api.post('/api/admin/refundRazorpayPaymentByAdmin', {
+        orderId: id,
+        paymentId: selectedPayment.id,
+        razorpayPaymentId: selectedPayment.razorpayPaymentId,
+        amount: values.amount,
+        speed: values.speed,
+        reason: values.reason
+      });
+
+      if (response.data.message === "Success") {
+        message.success('Refund processed successfully');
+        setRefundModalVisible(false);
+        form.resetFields();
+        
+        // Refresh the data to update the UI
+        const orderRes = await api.get(`/api/admin/getOrderById/${id}`);
+        setOrder(orderRes.data.data.order);
+        
+        const paymentsRes = await api.get(`/api/admin/getPayments/${id}`);
+        setPayments(paymentsRes.data.data);
+      } else {
+        message.error(response.data.message || 'Failed to process refund');
+      }
+    } catch (error) {
+      console.error('Refund error:', error);
+      message.error(error.response?.data?.message || 'Failed to process refund');
+    } finally {
+      setRefundLoading(false);
+    }
+  };
+
   const renderStatusTag = (status) => {
     const statusMap = {
       PENDING: { color: 'orange', text: 'Pending' },
@@ -407,7 +492,7 @@ const formatDateTime = (dateString) => {
       )
     }
   ];
-const paymentColumns = [
+ const paymentColumns = [
     {
       title: 'Payment ID',
       dataIndex: 'id',
@@ -449,14 +534,15 @@ const paymentColumns = [
       key: 'actions',
       render: (_, record) => (
         <Space>
-          {record.paymentStatus === 'captured' && (
-            <Button size="small" onClick={() => handleRefund(record.id)}>
+          {record.paymentStatus === 'captured' && !order?.isRefunded && (
+            <Button 
+              size="small" 
+              onClick={() => handleRefund(record)}
+              icon={<ExclamationCircleOutlined />}
+            >
               Refund
             </Button>
           )}
-          <Button size="small" onClick={() => viewPaymentDetails(record)}>
-            Details
-          </Button>
         </Space>
       )
     }
@@ -592,22 +678,20 @@ const paymentColumns = [
   if (loading) return <Card loading />;
   if (!order) return <div>Order not found</div>;
 
-  return (
+ return (
     <div className="p-6">
-      {/* <Button onClick={() => router.push('/admin/orders')} className="mb-4">
-        Back to Orders
-      </Button> */}
       <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold">Order Details</h1>
-              <Space>
-                <Button onClick={() => router.push('/admin/orders')}>
-                  Back to Orders
-                </Button>
-                <Button type="primary" onClick={() => router.push(`/admin/orders/${id}/edit`)}>
-                  Edit Order
-                </Button>
-              </Space>
-            </div>
+        <h1 className="text-2xl font-bold">Order Details</h1>
+        <Space>
+          <Button onClick={() => router.push('/admin/orders')}>
+            Back to Orders
+          </Button>
+          <Button type="primary" onClick={() => router.push(`/admin/orders/${id}/edit`)}>
+            Edit Order
+          </Button>
+        </Space>
+      </div>
+      
       <Card title={`Order #${order?.id}`} loading={loading}>
         <Descriptions bordered column={2}>
           <Descriptions.Item label="Customer">
@@ -674,7 +758,107 @@ const paymentColumns = [
           className="mt-6"
         />
       </Card>
-
+<Modal
+          title="Process Refund"
+          open={refundModalVisible}
+          onCancel={() => {
+            setRefundModalVisible(false);
+            form.resetFields();
+          }}
+          footer={null}
+          width={600}
+        >
+          <Alert
+            message="Warning"
+            description="This action will refund the payment to the customer. This cannot be undone."
+            type="warning"
+            showIcon
+            className="mb-4"
+          />
+          
+          {selectedPayment && (
+            <Descriptions bordered column={1} className="mb-4">
+              <Descriptions.Item label="Payment ID">{selectedPayment.id}</Descriptions.Item>
+              <Descriptions.Item label="Razorpay ID">{selectedPayment.razorpayPaymentId || 'N/A'}</Descriptions.Item>
+              <Descriptions.Item label="Original Amount">₹{selectedPayment.paymentAmount}</Descriptions.Item>
+            </Descriptions>
+          )}
+          
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleRefundSubmit}
+          >
+            <Form.Item
+              label="Refund Amount (₹)"
+              name="amount"
+              rules={[
+                { required: true, message: 'Please enter refund amount' },
+                {
+                  validator: (_, value) => {
+                    if (value && selectedPayment && value > selectedPayment.paymentAmount) {
+                      return Promise.reject(new Error('Refund amount cannot exceed original payment amount'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
+            >
+              <InputNumber
+                min={0.01}
+                step={0.01}
+                precision={2}
+                style={{ width: '100%' }}
+                placeholder="Enter refund amount"
+              />
+            </Form.Item>
+            
+            <Form.Item
+              label="Refund Speed"
+              name="speed"
+              rules={[{ required: true, message: 'Please select refund speed' }]}
+            >
+              <Select placeholder="Select refund speed">
+                <Option value="normal">Normal (5-7 business days)</Option>
+                <Option value="optimum">Optimum (Instant to 24 hours)</Option>
+              </Select>
+            </Form.Item>
+            
+            <Form.Item
+              label="Refund Reason"
+              name="reason"
+              rules={[{ required: true, message: 'Please enter refund reason' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="Enter reason for refund"
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+            
+            <Form.Item className="text-right mb-0">
+              <Space>
+                <Button 
+                  onClick={() => {
+                    setRefundModalVisible(false);
+                    form.resetFields();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  loading={refundLoading}
+                  danger
+                >
+                  Process Refund
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
       {order.orderStatus === 'PENDING' && (
         <Alert
           message="Action Required"
