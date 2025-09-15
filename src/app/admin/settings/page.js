@@ -16,7 +16,9 @@ import {
   Divider,
   Row,
   Col,
-  Grid
+  Grid,
+  Upload,
+  Image
 } from 'antd';
 import { 
   PercentageOutlined, 
@@ -26,9 +28,12 @@ import {
   CloseOutlined,
   RocketOutlined,
   DashboardOutlined,
-  SyncOutlined
+  SyncOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
-
+import { v4 as uuidv4 } from 'uuid';
 const { Title, Text } = Typography;
 const { Item } = Form;
 const { useBreakpoint } = Grid;
@@ -42,8 +47,23 @@ export default function SettingsPage() {
   const [selectedFee, setSelectedFee] = useState(null);
   const [settings, setSettings] = useState({
     vendorFeePercentage: 0,
-    platformFeePercentage: 0
+    platformFeePercentage: 0,
+    ad_banner_01: null,
+    ad_banner_02: null,
+    ad_banner_03: null,
+    ad_banner_04: null
   });
+
+  const [adBannerFiles, setAdBannerFiles] = useState({
+    ad_banner_01: null,
+    ad_banner_02: null,
+    ad_banner_03: null,
+    ad_banner_04: null
+  });
+
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+  const [previewTitle, setPreviewTitle] = useState('');
 
   const screens = useBreakpoint();
 
@@ -53,24 +73,29 @@ export default function SettingsPage() {
       setLoading(true);
       const response1 = await api.get('/api/admin/getOrSetSettings/platform_fee_percent');
       const response2 = await api.get('/api/admin/getOrSetSettings/vendor_fee_percent');
+      const response3 = await api.get('/api/admin/getOrSetSettings/ad_banner_01');
+      const response4 = await api.get('/api/admin/getOrSetSettings/ad_banner_02');
+      const response5 = await api.get('/api/admin/getOrSetSettings/ad_banner_03');
+      const response6 = await api.get('/api/admin/getOrSetSettings/ad_banner_04');
       
       const data = {
-        vendorFeePercentage: response2.data.data,
-        platformFeePercentage: response1.data.data
+        vendorFeePercentage: response2.data.data.value,
+        platformFeePercentage: response1.data.data.value,
+        ad_banner_01: response3.data.data.value,
+        ad_banner_02: response4.data.data.value,
+        ad_banner_03: response5.data.data.value,
+        ad_banner_04: response6.data.data.value
       };
       
-      setSettings({
-        vendorFeePercentage: data.vendorFeePercentage,
-        platformFeePercentage: data.platformFeePercentage
-      });
-
+      setSettings(data);
+      
       form.setFieldsValue({
         vendorFeePercentage: data.vendorFeePercentage,
         platformFeePercentage: data.platformFeePercentage
       });
     } catch (error) {
       console.error('Failed to fetch settings:', error);
-      message.error('Failed to load fee settings');
+      message.error('Failed to load settings');
     } finally {
       setLoading(false);
     }
@@ -79,7 +104,7 @@ export default function SettingsPage() {
   // Fetch current settings
   useEffect(() => {
     fetchSettings();
-  }, [fetchSettings]); // Added fetchSettings to dependency array
+  }, [fetchSettings]);
 
   const handleEdit = (feeType) => {
     setActiveEdit(feeType);
@@ -139,6 +164,145 @@ export default function SettingsPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAdBannerUpload = async (bannerKey) => {
+    const file = adBannerFiles[bannerKey];
+    if (!file) {
+      message.error('Please select a file first');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // const formData = new FormData();
+      // formData.append('file', file);
+      // formData.append('bannerKey', bannerKey);
+      // formData.append('filename', file.name);
+      // formData.append('filetype', file.type);
+
+      let key;
+      const ext = file.name.split('.').pop();
+      const uniqueId = uuidv4();
+
+      key = `ad_banners/${bannerKey}_${uniqueId}.${ext}`;
+
+      // 1. Get presigned URL from backend
+      const presignedResponse = await api.post(`/api/s3/s3-presigned-url-public-bucket`, {
+          fileName: key,
+          fileType: file.type,
+      });
+
+    //   // 2. Upload directly to S3 using the presigned URL    
+      const uploadResult = await fetch(presignedResponse.data.data.presignedUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type,
+        },
+        body: file,
+      },(progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadStates(prev => ({
+            ...prev,
+            [fieldName]: { ...prev[fieldName], progress: percentCompleted }
+          }));
+        });
+        if (!uploadResult.ok) {
+            throw new Error('Failed to upload file to S3');
+        }
+
+      const response = await api.patch('/api/admin/updateAdBannerSettings', {
+        [bannerKey]: key
+      });
+
+      message.success('Ad banner updated successfully!');
+      
+      // Update the specific banner in settings
+      setSettings(prev => ({
+        ...prev,
+        [bannerKey]: response.data.url // Assuming the API returns the URL
+      }));
+      
+      // Clear the file from state
+      setAdBannerFiles(prev => ({
+        ...prev,
+        [bannerKey]: null
+      }));
+      
+    } catch (error) {
+      console.error('Failed to update ad banner:', error);
+      message.error(error.response?.data?.message || 'Failed to update ad banner');
+    } finally {
+      //reload the page
+      window.location.reload();
+      setSubmitting(false);
+    }
+  };
+
+  const handleRemoveAdBanner = async (bannerKey) => {
+    try {
+      setSubmitting(true);
+      
+      // Call API to remove the banner (set to null)
+      const response = await api.patch('/api/admin/updateSettings', {
+        [bannerKey]: null
+      });
+
+      message.success('Ad banner removed successfully!');
+      
+      // Update the specific banner in settings
+      setSettings(prev => ({
+        ...prev,
+        [bannerKey]: null
+      }));
+      
+    } catch (error) {
+      console.error('Failed to remove ad banner:', error);
+      message.error(error.response?.data?.message || 'Failed to remove ad banner');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePreview = async (file) => {
+    if (!file.url && !file.preview) {
+      file.preview = URL.createObjectURL(file);
+    }
+    
+    setPreviewImage(file.url || file.preview);
+    setPreviewVisible(true);
+    setPreviewTitle(file.name || file.url.substring(file.url.lastIndexOf('/') + 1));
+  };
+
+  const handleFileChange = (info, bannerKey) => {
+    if (info.file.status === 'removed') {
+      setAdBannerFiles(prev => ({
+        ...prev,
+        [bannerKey]: null
+      }));
+      return;
+    }
+    
+    const { file } = info;
+    setAdBannerFiles(prev => ({
+      ...prev,
+      [bannerKey]: file.originFileObj || file
+    }));
+  };
+
+  const beforeUpload = (file) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+    if (!isJpgOrPng) {
+      message.error('You can only upload JPG/PNG/WEBP files!');
+    }
+    const isLt5M = file.size / 1024 / 1024 < 5;
+    if (!isLt5M) {
+      message.error('Image must be smaller than 5MB!');
+    }
+    return isJpgOrPng && isLt5M;
   };
 
   const calculateTotalFee = () => {
@@ -223,15 +387,112 @@ export default function SettingsPage() {
     </Button>
   ];
 
+  // Function to render ad banner cards
+  const renderAdBannerCard = (bannerKey, title) => {
+    const hasImage = settings[bannerKey];
+    const file = adBannerFiles[bannerKey];
+    
+    return (
+      <Col xs={24} sm={12} lg={6} key={bannerKey}>
+        <Card 
+          className="h-full border-none rounded-xl shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-white to-gray-50"
+          title={title}
+          extra={
+            hasImage && (
+              <Button 
+                type="text" 
+                icon={<EyeOutlined />} 
+                onClick={() => {
+                  setPreviewImage(settings[bannerKey]);
+                  setPreviewVisible(true);
+                  setPreviewTitle(title);
+                }}
+                size="small"
+              >
+                Preview
+              </Button>
+            )
+          }
+        >
+          <div className="flex flex-col items-center">
+            {hasImage ? (
+              <div className="mb-4 w-full">
+                <Image
+                  src={settings[bannerKey]}
+                  alt={title}
+                  className="rounded-lg object-contain max-h-40"
+                  preview={false}
+                />
+              </div>
+            ) : (
+              <div className="mb-4 w-full h-40 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Text type="secondary">No banner uploaded</Text>
+              </div>
+            )}
+            
+            <div className="w-full">
+              <Upload
+                name="file"
+                listType="picture"
+                maxCount={1}
+                beforeUpload={beforeUpload}
+                onChange={(info) => handleFileChange(info, bannerKey)}
+                onPreview={handlePreview}
+                showUploadList={true}
+                fileList={file ? [{
+                  uid: '1',
+                  name: file.name,
+                  status: 'done',
+                  url: URL.createObjectURL(file)
+                }] : []}
+              >
+                <Button 
+                  icon={<PlusOutlined />} 
+                  block
+                  className="mb-2"
+                >
+                  Upload Image
+                </Button>
+              </Upload>
+              
+              <div className="flex gap-2">
+                <Button 
+                  type="primary" 
+                  onClick={() => handleAdBannerUpload(bannerKey)}
+                  disabled={!file}
+                  loading={submitting}
+                  block
+                >
+                  Save Banner
+                </Button>
+                
+                {hasImage && (
+                  <Button 
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleRemoveAdBanner(bannerKey)}
+                    loading={submitting}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </Col>
+    );
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <div>
           <Title level={2} className="m-0 text-gray-800 flex items-center">
-            <DashboardOutlined className="mr-2" /> Fee Settings
+            <DashboardOutlined className="mr-2" /> Settings
           </Title>
           <Text type="secondary" className="text-sm">
-            Manage platform and vendor fee structures
+            Manage platform fees and advertisement banners
           </Text>
         </div>
         <Button 
@@ -413,6 +674,31 @@ export default function SettingsPage() {
           </Card>
         </Col>
       </Row>
+
+      <Divider />
+      
+      <Title level={3} className="mb-6">Advertisement Banners</Title>
+      <Text type="secondary" className="mb-6 block">
+        Manage advertisement banners that will be displayed across the platform
+      </Text>
+
+      <Row gutter={[24, 24]} className="mb-8">
+        {renderAdBannerCard('ad_banner_01', 'Ad Banner 01')}
+        {renderAdBannerCard('ad_banner_02', 'Ad Banner 02')}
+        {renderAdBannerCard('ad_banner_03', 'Ad Banner 03')}
+        {renderAdBannerCard('ad_banner_04', 'Ad Banner 04')}
+      </Row>
+
+      <Modal
+        open={previewVisible}
+        title={previewTitle}
+        footer={null}
+        onCancel={() => setPreviewVisible(false)}
+        width="80%"
+        style={{ maxWidth: '800px' }}
+      >
+        <img alt="Banner preview" style={{ width: '100%' }} src={previewImage} />
+      </Modal>
 
       <Modal
         title="⚠️ Confirm Fee Change"
