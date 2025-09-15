@@ -97,6 +97,7 @@ export default function AdminActionsPage() {
       verifyVendor: { color: 'orange', text: 'Verify Vendor' },
       resolveComplaint: { color: 'orange', text: 'Resolve Complaint' },
       updateSettings: { color: 'green', text: 'Update Settings' },
+      updateAdBannerSettings: { color: 'green', text: 'Update Ad Banner Settings' },
     };
     const config = typeConfig[type] || { color: 'default', text: type };
     return <Tag color={config.color}>{config.text}</Tag>;
@@ -306,6 +307,7 @@ export default function AdminActionsPage() {
                 <Option value="blockOrUnblockCustomer">block or unblock customer</Option>
                 <Option value="resolveComplaint">Resolve Complaint</Option>
                 <Option value="updateSettings">Update Settings</Option>
+                <Option value="updateAdBannerSettings">Update Ad Banner Settings</Option>
                 <Option value="payout_initiated">Payout Initiated</Option>
                 <Option value="payout_retried">Payout Retried</Option>
                 <Option value="payout_cancelled">Payout Cancelled</Option>
