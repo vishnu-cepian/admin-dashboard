@@ -17,7 +17,8 @@ import {
   Shield,
   ShoppingCartIcon,
   DollarSign,
-  CreditCard
+  CreditCard,
+  Trophy
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -106,6 +107,10 @@ export default function DashboardPage() {
     router.push("/admin/payouts")
   }
 
+  const manageLeaderboard = () => {
+    router.push("/admin/leadershipBoard")
+  }
+
   useEffect(() => {
     const token = getAccessToken();
  
@@ -138,6 +143,13 @@ export default function DashboardPage() {
       onClick: managePayouts,
       color: "bg-amber-500/10 hover:bg-amber-500/20",
       iconColor: "text-amber-600"
+    },
+    {
+      title: "Leaderboard",
+      icon: <Trophy className="w-6 h-6" />,
+      onClick: manageLeaderboard,
+      color: "bg-orange-500/10 hover:bg-orange-500/20",
+      iconColor: "text-orange-600"
     },
     {
       title: "Notifications",
