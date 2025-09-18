@@ -55,7 +55,7 @@ const fetchHealth = useCallback(async () => {
     const res = await api.get("/api/health");
     setHealth({
       status: res.data.status,
-      uptime: (res.data.uptime / (1000 * 60 )).toFixed(2),
+      uptime: (res.data.uptime / 60).toFixed(2),
       systemCpuUsage: res.data.cpuUsage.system,
       userCpuUsage: res.data.cpuUsage.user,
       totalMem: (res.data.totalMem / (1024 * 1024)).toFixed(2),
